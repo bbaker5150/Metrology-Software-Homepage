@@ -1,0 +1,106 @@
+METROLOGY SOFTWARE — APPLICATION HOMEPAGE
+
+FILES
+index.html: complete, self-contained homepage. Open it in a browser to preview.
+preview-desktop.png and preview-mobile.png: screenshots of this version.
+No installation, framework, CDN, API keys, external fonts, or build is required.
+
+DESIGN AND BRAND SOURCE
+Aligned with bbaker5150/Metrology-Workbench at commit:
+886edcf048fc07b6305027ce75c7e366781e1f2b
+https://github.com/bbaker5150/Metrology-Workbench
+
+The original medallion is embedded unchanged from:
+Frontend/workbench/src/assets/emblem-preview.webp
+The same file is included separately as emblem-preview.webp for future reuse.
+The homepage needs only index.html; there are no external image requests.
+This uses the actual static medallion render, not the animated 3D model.
+
+Colors, typography, rounded panels, and the slim header follow:
+Frontend/workbench/src/app/HomeLauncher.css
+Frontend/workbench/src/app/workbench.css
+Frontend/workbench/src/modules/uncertainty/App.css
+
+A light/dark control appears in the top bar. It reads the same localStorage
+"theme" key as Workbench, so the preference can be shared when both apps run
+on the same browser origin with storage access. Otherwise it defaults to dark.
+Without storage access, theme switching and favorites still work for the visit.
+Reduced-motion preferences disable the short emblem entrance animation.
+preview-light.png shows the light theme; preview-desktop.png and
+preview-mobile.png show the dark theme.
+The reference repository was read only; no GitHub files were modified.
+
+CURRENT APPLICATIONS
+Modernization Tracker
+Track modernization projects, tasks, milestones, and progress.
+https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Modernization-Tracker.aspx
+
+Uncertalytics
+Build measurement uncertainty budgets and assess calibration decision risk.
+https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Uncertalytics.aspx
+
+Both app cards are native links that open in a new tab. Click anywhere on a
+card to launch it, or focus its title and press Enter. Right-click and middle-
+click work like normal links. Favorite stars are separate buttons and do not
+launch the apps. The supplied app URLs are configured exactly. All previous
+sample apps have been removed. No private SharePoint data was fetched and no
+changes were made to your SharePoint site. Access to the target application
+continues to be controlled by SharePoint and your organization's sign-in policy.
+
+CUSTOMIZATION
+The APPS array near the bottom of index.html contains your app directory.
+To add a future app, add an object with a unique stable id, name, description,
+initials, and a trusted full HTTPS url. The app count updates automatically.
+Brand text, page title, favicon and colors are in the HTML and CSS near the top.
+CSS variables in :root and :root[data-theme="light"] define both palettes.
+The homepage name is Metrology Software. Only the theme control appears in the
+top bar; the main emblem remains. Application cards use the shared slate surface, border, and text colors in
+both themes. The separate Open application buttons and card footer labels/icons have been removed.
+
+USE WITH MODERN SHAREPOINT
+Modern SharePoint Text and Embed web parts do not execute arbitrary pasted HTML
+and JavaScript. Uploading this file to Site Assets alone does not reliably make
+it a runnable homepage; it may download or be blocked by tenant policy.
+
+Option A — approved HTTPS hosting and Embed web part:
+Host index.html on an organization-approved HTTPS host. Add the Embed web part
+to your SharePoint page and use an iframe pointing to the hosted page:
+
+<iframe src="https://YOUR-APP-HOST/index.html" width="100%" height="1150"
+        title="Metrology Software application hub" style="border:0"></iframe>
+
+Replace the URL and adjust height to suit the SharePoint page. SharePoint must
+allow that host under HTML Field Security. The host must allow embedding from
+your tenant using its Content-Security-Policy frame-ancestors policy and must
+not send an X-Frame-Options policy that blocks embedding. Cross-domain hosting
+and authentication may require further configuration. Use hosting permitted
+by your organization's policies; availability depends on tenant restrictions.
+Publish the page and select Make homepage in Site Pages, if your permissions
+and site configuration allow it. The iframe URL is for this homepage; the
+Modernization Tracker URL remains the launch link inside the homepage.
+
+Option B — native SharePoint Framework (SPFx) web part:
+Have a SharePoint developer adapt this HTML into an SPFx client-side web part.
+Scope CSS and selectors to the web part root, move behavior into its lifecycle,
+clean up event listeners on disposal, and expose branding and the app directory
+as properties or a SharePoint List. Package and deploy through your approved
+App Catalog, add to a modern page, publish, and make it the homepage.
+This deliverable is standalone HTML, not a packaged SPFx solution.
+
+BEHAVIOR
+Search matches app names and descriptions. Ctrl+K / Cmd+K focuses search.
+Escape clears focused search. Stars toggle Favorites.
+Favorites and Recent store only app IDs in this browser's localStorage and do
+not sync between devices. If storage is blocked, state lasts for this visit.
+Recent records launch-link clicks; it does not assert that the destination
+loaded successfully. The homepage does not grant app permissions.
+Both app links are also available when JavaScript is disabled.
+
+VALIDATION
+Chromium checks covered both exact app URLs, whole-card pointer and keyboard
+navigation, favorite controls that do not launch apps, two-app directory, search and empty
+states, favorites and persistence, recent launch tracking, keyboard search shortcuts,
+responsive widths 320 through 1920, both themes and saved theme preferences,
+exact emblem bytes and image loading, reduced motion, blocked browser storage,
+and no JavaScript errors. Target application
+availability, SharePoint embedding, and tenant access were not tested.
