@@ -7,6 +7,8 @@ A self-contained, responsive application directory for the Metrology Software Sh
 - **Modernization Tracker:** Track modernization projects, tasks, milestones, and progress.
 - **Uncertalytics:** Build measurement uncertainty budgets and assess calibration decision risk.
 
+The top-left back arrow returns to the SharePoint site’s `SitePages/` endpoint, navigating the full browser page when the homepage is embedded.
+
 Each card is a native link that opens the app in a new tab. Favorite controls remain separate. Search, favorites, recently opened apps, and light/dark themes are included. Browser preferences are stored locally when storage is available.
 
 ## Customize

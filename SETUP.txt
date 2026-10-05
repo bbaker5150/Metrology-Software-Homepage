@@ -53,8 +53,9 @@ To add a future app, add an object with a unique stable id, name, description,
 initials, and a trusted full HTTPS url. The app count updates automatically.
 Brand text, page title, favicon and colors are in the HTML and CSS near the top.
 CSS variables in :root and :root[data-theme="light"] define both palettes.
-The homepage name is Metrology Software. Only the theme control appears in the
-top bar; the main emblem remains. Application cards use the shared slate surface, border, and text colors in
+The homepage name is Metrology Software. The top bar has a back arrow on the left and the theme control on the right.
+The back arrow opens https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/
+in the top-level browser page; the main emblem remains. Application cards use the shared slate surface, border, and text colors in
 both themes. The separate Open application buttons and card footer labels/icons have been removed.
 
 USE WITH MODERN SHAREPOINT
