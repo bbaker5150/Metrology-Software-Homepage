@@ -21,37 +21,20 @@
 .card-link::after{content:"";position:absolute;inset:0;border-radius:16px;z-index:1}.card-link:focus-visible{outline:none}.card-link:focus-visible::after{outline:2px solid var(--primary);outline-offset:4px}.favorite{z-index:2}.fallback-link{display:block;margin:15px 0;padding:20px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
 .back-link{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:7px;color:var(--muted);transition:background .18s,color .18s}.back-link:hover{background:var(--icon-bg);color:var(--text)}.back-link svg{width:18px;height:18px}
 
-/* Full-bleed application backdrops. Images remain embedded and theme-aware. */
-.app-card{--card-ink:#0c1525;--card-rgb:12,21,37;--accent:112,175,255;isolation:isolate;overflow:hidden;display:flex;align-items:flex-end;min-height:300px;padding:38px;gap:0;border-radius:22px;background:var(--card-ink);border-color:rgba(149,183,226,.19);box-shadow:0 12px 32px #00000018;transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease}
-.app-card:nth-child(2){--accent:98,211,222}
-.app-preview{position:absolute;inset:0;z-index:-3;overflow:hidden;pointer-events:none;background:var(--card-ink)}
-.app-preview img{position:absolute;right:-2%;top:0;display:block;width:82%;height:100%;object-fit:cover;object-position:center 12%;opacity:.88;transform:scale(1.025);transform-origin:75% 45%;filter:saturate(.82);transition:transform .7s cubic-bezier(.2,.7,.2,1),opacity .5s ease}
+/* Real application captures, embedded for single-file SharePoint hosting. */
+.app-card{padding:14px;gap:28px;align-items:center}
+.app-preview{flex:0 0 42%;aspect-ratio:8/5;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--background)}
+.app-preview img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;transition:transform .3s ease}
 .app-preview .preview-light{display:none}
 :root[data-theme="light"] .app-preview .preview-dark{display:none}
 :root[data-theme="light"] .app-preview .preview-light{display:block}
-.app-card::before{content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(90deg,var(--card-ink) 0%,rgba(var(--card-rgb),.97) 22%,rgba(var(--card-rgb),.80) 40%,rgba(var(--card-rgb),.14) 73%,rgba(var(--card-rgb),.06)),linear-gradient(0deg,rgba(var(--card-rgb),.68),transparent 76%)}
-.app-card::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;box-shadow:inset 0 1px 0 #ffffff0c;background:radial-gradient(ellipse at 0% 100%,rgba(var(--accent),.12),transparent 60%);transition:opacity .35s ease}
-.app-content{width:100%;padding:0;min-width:0}
-.app-top{min-height:0}
-.app-card h3{font-size:clamp(24px,2.6vw,30px);line-height:1.15;letter-spacing:-.65px;margin:0 40px 13px 0;color:#f2f6ff;max-width:430px;text-wrap:balance}
-.app-card h3::before{content:"";display:block;width:32px;height:3px;border-radius:3px;margin-bottom:22px;background:rgb(var(--accent));box-shadow:0 0 18px rgba(var(--accent),.32);transition:width .35s ease}
-.app-description{max-width:370px;font-size:15px;line-height:1.65;color:#bccbdf;text-wrap:pretty}
-.app-card .favorite{top:20px;right:20px;width:36px;height:36px;border-radius:11px;color:#c5d4e8;background:#122036b3;border:1px solid #b9d7ff29;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.app-card .favorite:hover,.app-card .favorite[aria-pressed=true]{background:#253c5be6;color:#a8cfff;border-color:#a8cfff66}
-.app-card .card-link::after{border-radius:22px}
-.app-card:focus-within{border-color:rgba(var(--accent),.65)}
-.app-card .card-link:focus-visible::after{outline:2px solid rgb(var(--accent));outline-offset:-4px}
-@media(hover:hover) and (pointer:fine){.app-card:hover{transform:translateY(-4px);border-color:rgba(var(--accent),.45);box-shadow:0 18px 44px #00000026,0 0 30px rgba(var(--accent),.06)}.app-card:hover .app-preview img{transform:scale(1.07);opacity:1}.app-card:hover h3::before{width:52px}}
-:root[data-theme="light"] .app-card{--card-ink:#f4f7fc;--card-rgb:244,247,252;--accent:43,101,190;border-color:#b8cce46b;box-shadow:0 8px 28px #18345909}
-:root[data-theme="light"] .app-card:nth-child(2){--accent:16,129,145}
-:root[data-theme="light"] .app-card h3{color:#172a43}
-:root[data-theme="light"] .app-description{color:#435875}
-:root[data-theme="light"] .app-card .favorite{background:#ffffffb8;color:#536d90;border-color:#92adcd55}
-:root[data-theme="light"] .app-card .favorite:hover,:root[data-theme="light"] .app-card .favorite[aria-pressed=true]{color:#225fae;background:#e4eeffd9;border-color:#80a9df}
-@media(max-width:800px){.app-card{min-height:290px;padding:30px}.app-preview img{width:100%;right:-14%}.app-description{max-width:310px}}
-@media(max-width:620px){.app-card{min-height:350px;padding:26px 24px;display:flex;border-radius:19px}.app-preview img{inset:0;width:100%;height:100%;object-position:62% top;opacity:.78}.app-card::before{background:linear-gradient(0deg,var(--card-ink) 0%,rgba(var(--card-rgb),.98) 23%,rgba(var(--card-rgb),.83) 42%,rgba(var(--card-rgb),.12) 80%,rgba(var(--card-rgb),.06))}.app-card::after{background:radial-gradient(ellipse at 0% 100%,rgba(var(--accent),.1),transparent 65%)}.app-card h3{font-size:25px;margin:0 0 11px;max-width:100%}.app-card h3::before{margin-bottom:17px}.app-description{font-size:14px;max-width:100%}.app-card .favorite{top:15px;right:15px}.app-card .card-link::after{border-radius:19px}}
-@media(max-width:360px){.app-card{padding:23px 20px;min-height:335px}.app-card h3{font-size:23px}}
-@media(prefers-reduced-motion:reduce){.app-card,.app-preview img,.app-card h3::before{transition:none}.app-card:hover,.app-card:hover .app-preview img{transform:none}}
+.app-card:hover .app-preview img{transform:scale(1.025)}
+.app-content{padding:20px 24px 20px 0}
+.app-top{min-height:10px}
+.app-card h3{margin-right:8px}
+@media(max-width:800px){.app-card{gap:22px}.app-preview{flex-basis:43%}.app-content{padding-right:14px}.app-card h3{font-size:21px}}
+@media(max-width:620px){.app-card{padding:12px;display:block}.app-preview{width:100%;aspect-ratio:8/5}.app-content{padding:20px 10px 14px}.app-top{min-height:0}.app-card h3{padding-right:32px}.favorite{top:20px;right:20px;background:var(--surface);border-color:var(--border)}}
+@media(prefers-reduced-motion:reduce){.app-preview img{transition:none}.app-card:hover .app-preview img{transform:none}}
 </style>
 
 </head>
