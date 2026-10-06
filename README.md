@@ -32,3 +32,5 @@ Checked in Chromium: both configured URLs, whole-card pointer and keyboard navig
 ## App thumbnails
 
 Real local captures of Modernization Tracker and the Uncertalytics module in Metrology Workbench use illustrative sample data. Light and dark WebP previews are embedded in `index.html`; no image hosting is required. See `THUMBNAILS.txt` for capture details.
+
+Application screenshots form full-card backdrops with responsive directional gradients, theme-aware colors, subtle hover motion, and reduced-motion support. Cards retain their native links and independent favorite controls.
