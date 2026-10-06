@@ -28,3 +28,7 @@ See [SETUP.txt](SETUP.txt) for hosting and embedding options. This is a standalo
 ## Validation
 
 Checked in Chromium: both configured URLs, whole-card pointer and keyboard navigation, full-card keyboard focus, independent favorites, recent-app ordering, keyword search, both themes, and widths from 320 to 1920 pixels. Navigation tests use local mock responses; target SharePoint availability and authentication have not been verified.
+
+## App thumbnails
+
+Real local captures of Modernization Tracker and the Uncertalytics module in Metrology Workbench use illustrative sample data. Light and dark WebP previews are embedded in `index.html`; no image hosting is required. See `THUMBNAILS.txt` for capture details.

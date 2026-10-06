@@ -1,0 +1,23 @@
+Application preview images — captured 2026-10-06
+
+Modernization Tracker
+Source: https://github.com/bbaker5150/NPSL-Modernization-Tracker
+Commit: 145362ef8b4634add988cc6db2907ab8e8124609
+View: modernization portfolio with four illustrative projects.
+
+Uncertalytics
+Source: https://github.com/bbaker5150/Metrology-Workbench
+Commit: 7b301dcfa10844056d3fe12dca2eecaa22bd782f
+View: Workbench's Uncertalytics module, uncertainty budget tab.
+This is NOT the older standalone Uncertalytics application.
+
+Both apps were rendered locally from repository source in Chromium.
+Captures use synthetic example data, not live SharePoint records.
+Workbench's API was stubbed locally using its existing smoke-harness pattern.
+No source app was deployed or changed on GitHub.
+Screenshots are for visual previews, not validated measurement results.
+
+Dark and light WebP images are embedded in index.html as data URIs.
+The homepage selects the matching preview through its existing theme setting.
+Separate WebP copies are included in thumbnails/ for future reuse.
+The complete card remains a native link, including the preview area.
