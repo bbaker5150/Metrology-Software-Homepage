@@ -21,3 +21,10 @@ Dark and light WebP images are embedded in index.html as data URIs.
 The homepage selects the matching preview through its existing theme setting.
 Separate WebP copies are included in thumbnails/ for future reuse.
 The complete card remains a native link, including the preview area.
+
+METBASE — added 2026-10-29
+Source: user-supplied dark and light FRCSW Engineering workspace screenshots.
+Original JPEG bytes are preserved and embedded in index.html (no external image requests).
+Dark: thumbnails/metbase-dark.jpg, 1280 × 616.
+Light: thumbnails/metbase-light.jpg, 1280 × 632.
+Both use contain sizing to display the complete screenshot.
