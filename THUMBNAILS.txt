@@ -28,3 +28,14 @@ Original JPEG bytes are preserved and embedded in index.html (no external image 
 Dark: thumbnails/metbase-dark.jpg, 1280 × 616.
 Light: thumbnails/metbase-light.jpg, 1280 × 632.
 Both use contain sizing to display the complete screenshot.
+
+Metrology Confluence — added 2026-10-30
+Source: https://github.com/bbaker5150/Metrology-Confluence
+Commit: bc55d04da34b682a43c8097f2c36947d5a1470f6
+View: knowledge hub home dashboard with seeded demonstration content.
+Captured from the final single-file build in Chromium at 1440 × 900.
+Dark and light WebP images match the homepage's 8:5 preview frame.
+Files: thumbnails/metrology-confluence-dark.webp and
+       thumbnails/metrology-confluence-light.webp.
+Both images are embedded in index.html; no image hosting is required.
+No private SharePoint content or live tenant records were used.

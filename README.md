@@ -7,6 +7,7 @@ A self-contained, responsive application directory for the Metrology Software Sh
 - **Modernization Tracker:** Track modernization projects, tasks, milestones, and progress.
 - **Uncertalytics:** Build measurement uncertainty budgets and assess calibration decision risk.
 - **METBASE:** Tracks SS and ISE data.
+- **Metrology Confluence:** Share team knowledge, standard operating procedures, guides, and project documentation in one searchable workspace.
 
 The top-left back arrow returns to the SharePoint site’s `SitePages/` endpoint, navigating the full browser page when the homepage is embedded.
 
@@ -28,10 +29,12 @@ See [SETUP.txt](SETUP.txt) for hosting and embedding options. This is a standalo
 
 ## Validation
 
-Checked in Chromium: all three configured URLs, whole-card pointer and keyboard navigation, full-card keyboard focus, independent favorites, recent-app ordering, keyword search, both themes, and widths from 320 to 1920 pixels. Navigation tests use local mock responses; target SharePoint availability and authentication have not been verified.
+Checked in Chromium: all four configured URLs, whole-card pointer and keyboard navigation, full-card keyboard focus, independent favorites, recent-app ordering, keyword search, both themes, and widths from 320 to 1920 pixels. Navigation tests use local mock responses; target SharePoint availability and authentication have not been verified.
 
 ## App thumbnails
 
 Real local captures of Modernization Tracker and the Uncertalytics module in Metrology Workbench use illustrative sample data. Light and dark WebP previews are embedded in `index.html`; no image hosting is required. See `THUMBNAILS.txt` for capture details.
 
 METBASE uses the supplied dark and light JPEG screenshots, embedded directly in the HTML and included in `thumbnails/`. The wider screenshots fit inside the preview frame without cropping. Its card and no-JavaScript fallback both use the destination from the supplied homepage: `https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx`.
+
+Metrology Confluence uses real light and dark dashboard captures from [its repository](https://github.com/bbaker5150/Metrology-Confluence), embedded as WebP images. Its card and no-JavaScript fallback use the planned suite page `https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Metrology-Confluence.aspx`. Create or publish that SharePoint page before rollout, or change both links to your deployed URL. This repository update does not deploy the app or homepage to SharePoint.

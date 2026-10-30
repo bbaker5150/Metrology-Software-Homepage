@@ -39,10 +39,20 @@ Uncertalytics
 Build measurement uncertainty budgets and assess calibration decision risk.
 https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Uncertalytics.aspx
 
-Both app cards are native links that open in a new tab. Click anywhere on a
+METBASE
+Tracks SS and ISE data.
+https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx
+
+Metrology Confluence
+Share team knowledge, standard operating procedures, guides, and project documentation.
+https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Metrology-Confluence.aspx
+This is the planned suite page; publish it before rollout or update the APPS
+entry and no-JavaScript fallback to your actual deployed URL.
+
+All app cards are native links that open in a new tab. Click anywhere on a
 card to launch it, or focus its title and press Enter. Right-click and middle-
 click work like normal links. Favorite stars are separate buttons and do not
-launch the apps. The supplied app URLs are configured exactly. All previous
+launch the apps. Existing app URLs are unchanged; Confluence uses the planned suite page above. All previous
 sample apps have been removed. No private SharePoint data was fetched and no
 changes were made to your SharePoint site. Access to the target application
 continues to be controlled by SharePoint and your organization's sign-in policy.
@@ -50,7 +60,9 @@ continues to be controlled by SharePoint and your organization's sign-in policy.
 CUSTOMIZATION
 The APPS array near the bottom of index.html contains your app directory.
 To add a future app, add an object with a unique stable id, name, description,
-initials, and a trusted full HTTPS url. The app count updates automatically.
+initials, and a trusted full HTTPS url. Add matching dark/light embedded images
+to THUMBNAILS using the same ID. The runtime app count updates automatically;
+update static counts and the no-JavaScript fallback when adding a new card.
 Brand text, page title, favicon and colors are in the HTML and CSS near the top.
 CSS variables in :root and :root[data-theme="light"] define both palettes.
 The homepage name is Metrology Software. The top bar has a back arrow on the left and the theme control on the right.
@@ -95,11 +107,11 @@ Favorites and Recent store only app IDs in this browser's localStorage and do
 not sync between devices. If storage is blocked, state lasts for this visit.
 Recent records launch-link clicks; it does not assert that the destination
 loaded successfully. The homepage does not grant app permissions.
-Both app links are also available when JavaScript is disabled.
+All app links are also available when JavaScript is disabled.
 
 VALIDATION
-Chromium checks covered both exact app URLs, whole-card pointer and keyboard
-navigation, favorite controls that do not launch apps, two-app directory, search and empty
+Chromium checks covered all four configured app URLs, whole-card pointer and keyboard
+navigation, favorite controls that do not launch apps, four-app directory, search and empty
 states, favorites and persistence, recent launch tracking, keyboard search shortcuts,
 responsive widths 320 through 1920, both themes and saved theme preferences,
 exact emblem bytes and image loading, reduced motion, blocked browser storage,
