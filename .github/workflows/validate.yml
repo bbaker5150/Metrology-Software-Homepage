@@ -1,0 +1,47 @@
+name: Validate application homepage
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm test
+      - name: Install locked browser
+        timeout-minutes: 5
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: 120000
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          fi
+          npx --no-install playwright install --with-deps chromium
+      - run: npm run test:browser
+      - name: Checksum deployable HTML
+        run: sha256sum index.html > index.html.sha256
+      - uses: actions/upload-artifact@v5
+        with:
+          name: metrology-software-homepage
+          path: |
+            index.html
+            index.html.sha256
+            SETUP.txt
+          retention-days: 90
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: homepage-ui-review
+          path: test-artifacts
+          if-no-files-found: ignore
