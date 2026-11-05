@@ -3,7 +3,9 @@ METROLOGY SOFTWARE — APPLICATION HOMEPAGE
 FILES
 index.html: complete, self-contained homepage. Open it in a browser to preview.
 preview-desktop.png and preview-mobile.png: screenshots of this version.
-No installation, framework, CDN, API keys, external fonts, or build is required.
+No runtime installation, framework, CDN, API keys, external fonts, or build is required.
+In SharePoint, app cards load after read-only page permission checks. Local file
+preview is labeled and shows all four apps. See ACCESS.md before deployment.
 
 DESIGN AND BRAND SOURCE
 Aligned with bbaker5150/Metrology-Workbench at commit:
@@ -46,8 +48,8 @@ https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.a
 Metrology Confluence
 Share team knowledge, standard operating procedures, guides, and project documentation.
 https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Metrology-Confluence.aspx
-This is the planned suite page; publish it before rollout or update the APPS
-entry and no-JavaScript fallback to your actual deployed URL.
+Publish this suite page before rollout or update the APPS entry to the actual
+deployed URL. App links are shown only after their page access check succeeds.
 
 All app cards are native links that open in a new tab. Click anywhere on a
 card to launch it, or focus its title and press Enter. Right-click and middle-
@@ -62,7 +64,8 @@ The APPS array near the bottom of index.html contains your app directory.
 To add a future app, add an object with a unique stable id, name, description,
 initials, and a trusted full HTTPS url. Add matching dark/light embedded images
 to THUMBNAILS using the same ID. The runtime app count updates automatically;
-update static counts and the no-JavaScript fallback when adding a new card.
+counts are derived from the verified app list. Use a published ASPX page on the
+configured SharePoint tenant. The no-JavaScript state contains no app links.
 Brand text, page title, favicon and colors are in the HTML and CSS near the top.
 CSS variables in :root and :root[data-theme="light"] define both palettes.
 The homepage name is Metrology Software. The top bar has a back arrow on the left and the theme control on the right.
@@ -75,8 +78,10 @@ Modern SharePoint Text and Embed web parts do not execute arbitrary pasted HTML
 and JavaScript. Uploading this file to Site Assets alone does not reliably make
 it a runnable homepage; it may download or be blocked by tenant policy.
 
-Option A — approved HTTPS hosting and Embed web part:
-Host index.html on an organization-approved HTTPS host. Add the Embed web part
+Option A — approved SharePoint hosting and Embed web part:
+Use the existing same-origin SharePoint hosting flow for index.html. Authenticated
+permission checks need the signed-in SharePoint session. An unrelated HTTPS
+host may not support cross-origin SharePoint authentication. Add the Embed web part
 to your SharePoint page and use an iframe pointing to the hosted page:
 
 <iframe src="https://YOUR-APP-HOST/index.html" width="100%" height="1150"
@@ -107,7 +112,11 @@ Favorites and Recent store only app IDs in this browser's localStorage and do
 not sync between devices. If storage is blocked, state lasts for this visit.
 Recent records launch-link clicks; it does not assert that the destination
 loaded successfully. The homepage does not grant app permissions.
-All app links are also available when JavaScript is disabled.
+JavaScript is required to check access; there are no unfiltered fallback links.
+Favorites, Recent, search and app counts include only verified applications.
+Refresh rechecks access, as does returning to the tab. Failed checks leave the
+affected cards hidden with a retry message. Access decisions are never cached
+in localStorage. No SharePoint permissions are changed by the Home page.
 
 VALIDATION
 Chromium checks covered all four configured app URLs, whole-card pointer and keyboard
@@ -115,5 +124,10 @@ navigation, favorite controls that do not launch apps, four-app directory, searc
 states, favorites and persistence, recent launch tracking, keyboard search shortcuts,
 responsive widths 320 through 1920, both themes and saved theme preferences,
 exact emblem bytes and image loading, reduced motion, blocked browser storage,
-and no JavaScript errors. Target application
-availability, SharePoint embedding, and tenant access were not tested.
+and no JavaScript errors. Additional automated checks cover Tracker-only access
+across every view, owner access per site, failed authentication/network results,
+refresh and revoked permissions, a safe no-JavaScript state, and local preview.
+Run npm ci, npm test, then install the locked Playwright browser and run
+npm run test:browser. CI also uploads the HTML, its checksum, and screenshots.
+Target application availability, SharePoint embedding, and tenant access
+still need the real-account checks in ACCESS.md.
