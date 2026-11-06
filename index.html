@@ -121,13 +121,7 @@ function mayUsePortal(audience) {
   return audience === 'owner' || audience === 'metcal';
 }
 
-function directoryApps(apps, audience) {
-  if (audience === 'owner') return apps;
-  if (audience === 'metcal') return apps.filter(app => app.id === 'metcal-portal');
-  if (audience === 'other') return apps.filter(app => app.id !== 'metcal-portal');
-  return [];
-}
-return { readPortalAudience, directoryApps };
+return { readPortalAudience };
 })();
 </script>
 <script id="application-access">
@@ -192,7 +186,16 @@ window.MetrologyAccess = (() => {
       })]);
     } finally { clearTimeout(timer); }
   }
-  return { environment, permissionUrl, mayOpen, check };
+  async function checkApp(app, options = {}) {
+    // Existing apps keep their independent SharePoint page checks. METCAL
+    // membership must never revoke access granted by another app's groups.
+    const pageState = await check(app.url, options);
+    if (app.id !== 'metcal-portal' || pageState !== 'allowed') return pageState;
+    const audience = await window.MetcalAudience.readPortalAudience(options);
+    if (audience === 'owner' || audience === 'metcal') return 'allowed';
+    return audience === 'other' ? 'denied' : 'unknown';
+  }
+  return { environment, permissionUrl, mayOpen, check, checkApp };
 })();
 </script>
 
@@ -286,11 +289,9 @@ async function refreshAccess() {
   checking = (async () => {
     if (accessEnvironment === 'preview') accessibleApps = [...APPS];
     else if (accessEnvironment === 'sharepoint') {
-      const audience = await MetcalAudience.readPortalAudience();
-      const candidates = MetcalAudience.directoryApps(APPS, audience);
-      const states = await Promise.all(candidates.map(app => MetrologyAccess.check(app.url)));
-      accessibleApps = candidates.filter((app, index) => states[index] === 'allowed');
-      accessIncomplete = audience === 'unknown' || states.includes('unknown');
+      const states = await Promise.all(APPS.map(app => MetrologyAccess.checkApp(app)));
+      accessibleApps = APPS.filter((app, index) => states[index] === 'allowed');
+      accessIncomplete = states.includes('unknown');
     } else accessIncomplete = true;
     accessState = 'ready';
     render();

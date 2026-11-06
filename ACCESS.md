@@ -1,6 +1,6 @@
 # Home page access rollout
 
-The Home page checks the user's audience and then each candidate application page before displaying its card. **METCAL Users** members see only the portal, while Site Owners retain all existing candidates. Other users retain the previous page-based directory without the portal. Group membership never replaces a page permission check. See [METCAL-ACCESS.md](METCAL-ACCESS.md) for the required SharePoint setup.
+The Home page checks each application's page permissions independently. Existing Metrology App User access is preserved even when the user also belongs to **METCAL Users**. The extra owner/METCAL membership check applies only to the portal. A failed membership lookup hides only that card; other readable applications remain visible. See [METCAL-ACCESS.md](METCAL-ACCESS.md) for the required SharePoint setup.
 
 ## Deploy
 
@@ -14,7 +14,8 @@ The Home page checks the user's audience and then each candidate application pag
 
 | Account / situation | Expected Home page behavior |
 | --- | --- |
-| METCAL Users member who is not a Site Owner | Only METCAL Quality & Training Portal appears, after its page access is verified. |
+| User with only METCAL Users' scoped page grants | Only METCAL Quality & Training Portal appears, after its page access is verified. |
+| Member of both METCAL Users and Metrology App User | All readable applications, including METCAL; memberships are additive. |
 | Site Owner who is also in METCAL Users | All applications that owner can read remain available. |
 | Tracker-only Viewer in Tracker Users, with no other app grants | Only Modernization Tracker appears, including in Favorites, Recent, search, and counts. |
 | Tracker Manager or Project Engineer without other app grants | Only Modernization Tracker appears. An elevated Tracker role does not grant suite access. |
@@ -36,6 +37,6 @@ For each configured app, the Home page derives the correct site collection from 
 
 It requires valid 32-bit High/Low permission words and both ViewListItems (1) and OpenItems (32), matching the Tracker's page-access requirement. Standard and verbose JSON responses are supported. A 403/404 response omits that app. Authentication failures, login HTML, redirects, malformed JSON/permission data, server errors, and a 15-second timeout produce an unverified result.
 
-Before page checks, authenticated GETs read `currentuser?$select=Id,IsSiteAdmin`, `currentuser/groups?$select=Id,Title&$top=5000`, and `associatedownergroup?$select=Id` on metsoft. Site collection admins need only the first request. Owner group IDs are matched to memberships, not guessed from a display name. Incomplete or failed audience responses hide the directory until retry. No permission, membership, sharing, schema, or data writes occur. The embedded audience helper is also used in the METCAL repository's `src/data/portalAccess.js`; update both copies when changing this policy.
+Only after confirming Read on the METCAL page, authenticated GETs read `currentuser?$select=Id,IsSiteAdmin`, `currentuser/groups?$select=Id,Title&$top=5000`, and `associatedownergroup?$select=Id` on metsoft. Site collection admins need only the first request. Owner group IDs are matched to memberships, not guessed from a display name. Incomplete or failed audience responses hide the portal until retry; existing app page checks do not depend on these endpoints. No permission, membership, sharing, schema, or data writes occur. The embedded audience helper is also used in the METCAL repository's `src/data/portalAccess.js`; update both copies when changing this policy.
 
 The automated browser suite runs the actual HTML inside a SharePoint-shaped iframe with mocked responses. It verifies the request paths, per-site results, and UI behavior but cannot establish real Flank Speed endpoint availability or permissions.

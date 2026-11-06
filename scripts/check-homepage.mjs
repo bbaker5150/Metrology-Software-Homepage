@@ -42,7 +42,8 @@ async function fixture(states, { audience = { role: 'other' }, seed = false, sta
       assert.ok(url.pathname.startsWith('/sites/metsoft/_api/web/'));
       if (audience.role === 'unknown') return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
       const groups = audience.role === 'owner' ? [{ Id: 7, Title: 'Metrology Software Owners' }, { Id: 19, Title: 'METCAL Users' }]
-        : audience.role === 'metcal' ? [{ Id: 19, Title: 'METCAL Users' }] : [];
+        : audience.role === 'mixed' ? [{ Id: 19, Title: 'METCAL Users' }, { Id: 22, Title: 'Metrology App User' }]
+        : audience.role === 'metcal' ? [{ Id: 19, Title: 'METCAL Users' }] : [{ Id: 22, Title: 'Metrology App User' }];
       const body = url.pathname.endsWith('/currentuser/groups') ? { value: groups }
         : url.pathname.endsWith('/associatedownergroup') ? { Id: 7 } : { Id: 44, IsSiteAdmin: false };
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
@@ -90,11 +91,11 @@ try {
   await f.page.waitForFunction(() => document.querySelector('#home').contentDocument.querySelector('#grid').getAttribute('aria-busy') === 'true');
   assert.equal(await f.home.locator('[data-open]').count(), 0);
   assert.equal(await f.home.locator('#nav-count').textContent(), '…');
-  // All four requests are issued before releasing the deferred responses.
+  // All app-page requests are issued independently before responses are released.
   await f.page.waitForTimeout(100);
   await f.release();
   await f.ready();
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 4);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, apps.length);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['modernization-tracker']);
   assert.equal(await f.home.locator('#nav-count').textContent(), '1');
   await screenshot(f, 'tracker-only-desktop');
@@ -172,7 +173,7 @@ try {
   states['modernization-tracker'] = 'deny'; states.uncertalytics = 'allow';
   await f.home.getByRole('button', { name: 'Refresh application access' }).click();
   await f.ready();
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 8);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 2 * apps.length);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['uncertalytics']);
   assert.equal(await f.home.locator('#access-note').isHidden(), true);
   await f.home.getByRole('button', { name: 'Favorites', exact: true }).click();
@@ -190,9 +191,9 @@ try {
     await f.finish();
   }
 
-  // METCAL membership narrows all directory views even with broad page reads.
+  // A METCAL-only user has scoped Read on the portal, with no other app grants.
   const audience = { role: 'metcal' };
-  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])), { seed: true, audience });
+  f = await fixture({ 'metcal-portal': 'allow' }, { seed: true, audience });
   await f.ready();
   assert.equal(await f.home.locator('#nav-count').textContent(), '1');
   assert.equal(await f.home.locator('#result-count').textContent(), '1 application');
@@ -202,13 +203,32 @@ try {
     assert.equal(await f.home.locator('#nav-count').textContent(), '1');
     assert.equal(await f.home.locator('#result-count').textContent(), '1 application');
   }
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 1);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, apps.length);
   await screenshot(f, 'metcal-only');
   audience.role = 'unknown';
   await f.home.getByRole('button', { name: 'Refresh application access' }).click();
   await f.ready();
   assert.equal(await f.home.locator('[data-open]').count(), 0);
   assert.equal(await f.home.locator('#nav-count').textContent(), '0');
+  await f.finish();
+
+  // Portal group failures do not remove the existing Metrology applications.
+  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])), { seed: true, audience: { role: 'unknown' } });
+  await f.ready();
+  for (const view of [/All apps/, 'Favorites', 'Recent']) {
+    await f.home.getByRole('button', { name: view, exact: typeof view === 'string' }).click();
+    assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), apps.filter(app => app.id !== 'metcal-portal').map(app => app.id));
+    assert.equal(await f.home.locator('#nav-count').textContent(), '4');
+    assert.equal(await f.home.locator('#result-count').textContent(), '4 applications');
+  }
+  await f.finish();
+
+  // Metrology App User plus METCAL Users is additive, including all counts.
+  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])), { seed: true, audience: { role: 'mixed' } });
+  await f.ready();
+  assert.equal(await f.home.locator('[data-open]').count(), apps.length);
+  assert.equal(await f.home.locator('#nav-count').textContent(), String(apps.length));
+  assert.equal(await f.home.locator('#result-count').textContent(), '5 applications');
   await f.finish();
 
   // Opening the file locally remains a clearly labeled design preview with no API calls.
