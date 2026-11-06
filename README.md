@@ -1,6 +1,6 @@
 # Metrology Software Homepage
 
-A self-contained, responsive application directory for the Metrology Software SharePoint site. Deploy `index.html` through the existing SharePoint hosting flow; no runtime dependencies or build step are required. Opening the file locally shows a labeled design preview with all four apps.
+A self-contained, responsive application directory for the Metrology Software SharePoint site. Deploy `index.html` through the existing SharePoint hosting flow; no runtime dependencies or build step are required. Opening the file locally shows a labeled design preview with all five apps.
 
 ## Applications
 
@@ -8,6 +8,7 @@ A self-contained, responsive application directory for the Metrology Software Sh
 - **Uncertalytics:** Build measurement uncertainty budgets and assess calibration decision risk.
 - **METBASE:** Tracks SS and ISE data.
 - **Metrology Confluence:** Share team knowledge, standard operating procedures, guides, and project documentation in one searchable workspace.
+- **METCAL Quality & Training Portal:** Coordinate quality audits, proficiency testing, laboratory capability, and METCAL training.
 
 The top-left back arrow returns to the SharePoint site’s `SitePages/` endpoint, navigating the full browser page when the homepage is embedded.
 
@@ -15,9 +16,11 @@ Each available card is a native link that opens the app in a new tab. Favorite c
 
 ## Application visibility
 
-In SharePoint, the directory starts without app links and reads the signed-in user's **EffectiveBasePermissions on each app page**. Only pages with View Items and Open Items are shown. A user who can read only the Tracker page sees only Modernization Tracker. Existing users see whichever pages their direct, inherited, or group permissions allow. The code does not infer access from a saved Tracker role or require membership in a particular named group.
+In SharePoint, the directory starts without app links and verifies the signed-in user's audience on metsoft. Members of the associated Site Owners group (and site collection administrators) retain the complete set of application candidates, including when they also belong to **METCAL Users**. Other members of **METCAL Users** see only the METCAL portal. Everyone else retains the existing application candidates, excluding the portal. The group name is exactly **METCAL Users**, plural.
 
-METBASE is checked on `/sites/ISEAMETENG`; the other pages are checked on `/sites/metsoft`. Ownership of metsoft does not automatically expose METBASE. The requests are authenticated, uncached GETs; the Home page does not create groups, enroll users, change permissions, or send invitations.
+The directory then reads the signed-in user's **EffectiveBasePermissions on each candidate app page**. Only pages with View Items and Open Items are shown. A Tracker-only user still sees only Modernization Tracker. The code does not infer authorization from saved app roles or favorites. Failed audience checks hide all links until a successful retry; group membership does not replace the page permission check.
+
+METBASE is checked on `/sites/ISEAMETENG`; the other pages are checked on `/sites/metsoft`. Ownership of metsoft does not automatically expose METBASE. The requests are authenticated, uncached GETs; the Home page does not create groups, enroll users, change permissions, or send invitations. Follow [METCAL-ACCESS.md](METCAL-ACCESS.md) to create the group and restrict the live SharePoint resources before rollout.
 
 Favorites, Recent, search, and counts all use the verified directory. Permission results are never saved in browser storage. **Refresh** checks again, as does returning to the tab. Denied or missing pages stay hidden. Failed authentication, invalid responses, network errors, and timeouts keep unverified cards hidden and show a retry message; they never fall back to showing every app. With JavaScript disabled, the page explains that access checks need JavaScript instead of exposing unfiltered links.
 
@@ -55,3 +58,5 @@ Real local captures of Modernization Tracker and the Uncertalytics module in Met
 METBASE uses the supplied dark and light JPEG screenshots, embedded directly in the HTML and included in `thumbnails/`. The wider screenshots fit inside the preview frame without cropping. Its card uses the destination from the supplied homepage: `https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx`.
 
 Metrology Confluence uses real light and dark captures of its refreshed knowledge home from [its repository](https://github.com/bbaker5150/Metrology-Confluence), including the shared Metrology Software emblem. The WebP images are embedded directly in the HTML. Its card links to `https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Metrology-Confluence.aspx` after access is verified. If that destination changes, update its APPS entry. This repository update does not deploy the app or homepage to SharePoint.
+
+METCAL uses real light and dark JPEG captures of the portal launcher from [metcal-quality-workbench](https://github.com/bbaker5150/metcal-quality-workbench). Both are embedded in the HTML. Its card uses the address supplied in the deployment screenshot: `https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/METCAL%20Quality%20&%20Training%20Portal.aspx`.

@@ -11,12 +11,13 @@ const apps = [
   { id: 'uncertalytics', name: 'Uncertalytics', path: '/sites/metsoft/SitePages/Uncertalytics.aspx' },
   { id: 'metbase', name: 'METBASE', path: '/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx' },
   { id: 'metrology-confluence', name: 'Metrology Confluence', path: '/sites/metsoft/SitePages/Metrology-Confluence.aspx' },
+  { id: 'metcal-portal', name: 'METCAL Quality & Training Portal', path: '/sites/metsoft/SitePages/METCAL%20Quality%20&%20Training%20Portal.aspx' },
 ];
 const previewFrames = '<iframe id="home" title="Metrology Software Home" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>';
 const browser = await chromium.launch();
 await fs.mkdir('test-artifacts', { recursive: true });
 
-async function fixture(states, { seed = false, stall = false, viewport = { width: 1440, height: 1100 } } = {}) {
+async function fixture(states, { audience = { role: 'other' }, seed = false, stall = false, viewport = { width: 1440, height: 1100 } } = {}) {
   const context = await browser.newContext({ viewport });
   const errors = [], requests = [], unexpected = [], waiting = [];
   if (seed) await context.addInitScript(ids => {
@@ -36,6 +37,16 @@ async function fixture(states, { seed = false, stall = false, viewport = { width
       return route.abort();
     }
     requests.push({ method: request.method(), path: decodeURIComponent(url.pathname), headers: request.headers() });
+    if (url.pathname.endsWith('/currentuser') || url.pathname.endsWith('/currentuser/groups') || url.pathname.endsWith('/associatedownergroup')) {
+      assert.equal(request.method(), 'GET');
+      assert.ok(url.pathname.startsWith('/sites/metsoft/_api/web/'));
+      if (audience.role === 'unknown') return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+      const groups = audience.role === 'owner' ? [{ Id: 7, Title: 'Metrology Software Owners' }, { Id: 19, Title: 'METCAL Users' }]
+        : audience.role === 'metcal' ? [{ Id: 19, Title: 'METCAL Users' }] : [];
+      const body = url.pathname.endsWith('/currentuser/groups') ? { value: groups }
+        : url.pathname.endsWith('/associatedownergroup') ? { Id: 7 } : { Id: 44, IsSiteAdmin: false };
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    }
     if (request.method() !== 'GET' || !url.pathname.endsWith('/ListItemAllFields/EffectiveBasePermissions')) unexpected.push(`${request.method()} ${url.pathname}`);
     const app = apps.find(app => decodeURIComponent(url.pathname).includes(`decodedurl='${decodeURIComponent(app.path)}'`));
     if (!app) { unexpected.push(url.href); return route.abort(); }
@@ -83,7 +94,7 @@ try {
   await f.page.waitForTimeout(100);
   await f.release();
   await f.ready();
-  assert.equal(f.requests.length, 4);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 4);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['modernization-tracker']);
   assert.equal(await f.home.locator('#nav-count').textContent(), '1');
   await screenshot(f, 'tracker-only-desktop');
@@ -103,16 +114,17 @@ try {
   await f.finish();
 
   // Owners are evaluated per app page too: metsoft ownership does not imply METBASE access.
-  f = await fixture({ 'modernization-tracker': 'owner', uncertalytics: 'owner', 'metrology-confluence': 'owner', metbase: 'deny' });
+  f = await fixture({ 'modernization-tracker': 'owner', uncertalytics: 'owner', 'metrology-confluence': 'owner', 'metcal-portal': 'owner', metbase: 'deny' }, { audience: { role: 'owner' } });
   await f.ready();
-  assert.equal(await f.home.locator('[data-open]').count(), 3);
+  assert.equal(await f.home.locator('[data-open]').count(), apps.length - 1);
   assert.equal(await f.home.getByRole('link', { name: 'Open METBASE in a new tab' }).count(), 0);
   await f.finish();
 
   // Existing suite access keeps the native links, preferences, keyboard and responsive layout.
-  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])));
+  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])), { audience: { role: 'owner' } });
   await f.ready();
-  assert.equal(await f.home.locator('[data-open]').count(), 4);
+  assert.equal(await f.home.locator('[data-open]').count(), apps.length);
+  assert.equal(await f.home.locator('#nav-count').textContent(), String(apps.length));
   await screenshot(f, 'suite-desktop-dark');
   for (const app of apps) {
     const link = f.home.getByRole('link', { name: `Open ${app.name} in a new tab` });
@@ -140,7 +152,7 @@ try {
   await f.home.getByRole('searchbox').fill('uncertainty');
   assert.equal(await f.home.locator('[data-open]').count(), 1);
   await f.page.keyboard.press('Escape');
-  assert.equal(await f.home.locator('[data-open]').count(), 4);
+  assert.equal(await f.home.locator('[data-open]').count(), apps.length);
   for (const width of [320, 390, 800, 1440, 1920]) {
     await f.page.setViewportSize({ width, height: 1000 });
     assert.equal(await f.home.locator('body').evaluate(body => body.scrollWidth <= innerWidth), true, `Overflow at ${width}px`);
@@ -160,7 +172,7 @@ try {
   states['modernization-tracker'] = 'deny'; states.uncertalytics = 'allow';
   await f.home.getByRole('button', { name: 'Refresh application access' }).click();
   await f.ready();
-  assert.equal(f.requests.length, 8);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 8);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['uncertalytics']);
   assert.equal(await f.home.locator('#access-note').isHidden(), true);
   await f.home.getByRole('button', { name: 'Favorites', exact: true }).click();
@@ -178,13 +190,34 @@ try {
     await f.finish();
   }
 
+  // METCAL membership narrows all directory views even with broad page reads.
+  const audience = { role: 'metcal' };
+  f = await fixture(Object.fromEntries(apps.map(app => [app.id, 'allow'])), { seed: true, audience });
+  await f.ready();
+  assert.equal(await f.home.locator('#nav-count').textContent(), '1');
+  assert.equal(await f.home.locator('#result-count').textContent(), '1 application');
+  for (const view of [/All apps/, 'Favorites', 'Recent']) {
+    await f.home.getByRole('button', { name: view, exact: typeof view === 'string' }).click();
+    assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['metcal-portal']);
+    assert.equal(await f.home.locator('#nav-count').textContent(), '1');
+    assert.equal(await f.home.locator('#result-count').textContent(), '1 application');
+  }
+  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 1);
+  await screenshot(f, 'metcal-only');
+  audience.role = 'unknown';
+  await f.home.getByRole('button', { name: 'Refresh application access' }).click();
+  await f.ready();
+  assert.equal(await f.home.locator('[data-open]').count(), 0);
+  assert.equal(await f.home.locator('#nav-count').textContent(), '0');
+  await f.finish();
+
   // Opening the file locally remains a clearly labeled design preview with no API calls.
   const local = await browser.newPage();
   const localRequests = [];
   local.on('request', request => { if (/^https?:/.test(request.url())) localRequests.push(request.url()); });
   await local.goto(pathToFileURL(`${process.cwd()}/index.html`).href);
   await local.getByText('Local preview · Application access is checked when hosted in SharePoint.').waitFor();
-  assert.equal(await local.locator('[data-open]').count(), 4);
+  assert.equal(await local.locator('[data-open]').count(), apps.length);
   assert.deepEqual(localRequests, []);
   await local.close();
   const noJs = await browser.newPage({ javaScriptEnabled: false });

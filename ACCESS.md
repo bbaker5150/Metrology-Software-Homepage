@@ -1,6 +1,6 @@
 # Home page access rollout
 
-The Home page now checks each application page before displaying its card. It reads the current user's effective permissions instead of treating the Tracker's Viewer label or any group name as proof of access. The new Tracker Users group works through the actual permissions assigned to it in SharePoint.
+The Home page checks the user's audience and then each candidate application page before displaying its card. **METCAL Users** members see only the portal, while Site Owners retain all existing candidates. Other users retain the previous page-based directory without the portal. Group membership never replaces a page permission check. See [METCAL-ACCESS.md](METCAL-ACCESS.md) for the required SharePoint setup.
 
 ## Deploy
 
@@ -8,15 +8,17 @@ The Home page now checks each application page before displaying its card. It re
 2. Give **Tracker Users** Read on the Home page itself and its specific HTML/assets location. Preserve the groups that already use the Home page and SharePoint-generated Limited Access. The Home page does not need to grant Tracker Users access to the entire site, Site Pages library, or other apps.
 3. Keep Tracker Users Read on the published Modernization Tracker page and its required assets/data. Keep the other application pages and data restricted to their intended groups. Existing broad grants from another group, direct sharing, or inheritance still count as access.
 4. Host the page in the SharePoint origin so requests use the signed-in user's existing session. Normal SharePoint pages and same-origin embedded `srcdoc` hosting are supported. The page detects context from its URL, parent SharePoint context, or referrer. An unrelated external host must not be used as a workaround for failed access checks; cross-origin authentication may not be supported. Unknown hosting contexts show a helpful empty state instead of all links.
-5. Refresh the deployed Home page and complete the account checks below. Opening the HTML directly from disk or localhost is a labeled design preview and deliberately shows all four applications; that preview does not validate SharePoint access.
+5. Refresh the deployed Home page and complete the account checks below. Opening the HTML directly from disk or localhost is a labeled design preview and deliberately shows all five applications; that preview does not validate SharePoint access.
 
 ## Check with real accounts
 
 | Account / situation | Expected Home page behavior |
 | --- | --- |
+| METCAL Users member who is not a Site Owner | Only METCAL Quality & Training Portal appears, after its page access is verified. |
+| Site Owner who is also in METCAL Users | All applications that owner can read remain available. |
 | Tracker-only Viewer in Tracker Users, with no other app grants | Only Modernization Tracker appears, including in Favorites, Recent, search, and counts. |
 | Tracker Manager or Project Engineer without other app grants | Only Modernization Tracker appears. An elevated Tracker role does not grant suite access. |
-| Existing suite user | Cards appear for each application page that account can read. |
+| Existing suite user outside METCAL Users and Site Owners | Existing non-METCAL cards appear for each application page that account can read. |
 | metsoft owner without ISEAMETENG access | Available metsoft apps appear; METBASE stays hidden. |
 | No readable app pages | A clear “No applications available” state appears. |
 | A permission service/network failure | Confirmed apps remain available; unverified apps stay hidden with a retry message. No fallback reveals the complete directory. |
@@ -32,6 +34,8 @@ For each configured app, the Home page derives the correct site collection from 
 <app-web>/_api/web/GetFileByServerRelativePath(decodedurl='<page-path>')/ListItemAllFields/EffectiveBasePermissions
 ```
 
-It requires valid 32-bit High/Low permission words and both ViewListItems (1) and OpenItems (32), matching the Tracker's page-access requirement. Standard and verbose JSON responses are supported. A 403/404 response omits that app. Authentication failures, login HTML, redirects, malformed JSON/permission data, server errors, and a 15-second timeout produce an unverified result. No user IDs or group lists are required. No permission, membership, sharing, schema, or data writes occur.
+It requires valid 32-bit High/Low permission words and both ViewListItems (1) and OpenItems (32), matching the Tracker's page-access requirement. Standard and verbose JSON responses are supported. A 403/404 response omits that app. Authentication failures, login HTML, redirects, malformed JSON/permission data, server errors, and a 15-second timeout produce an unverified result.
+
+Before page checks, authenticated GETs read `currentuser?$select=Id,IsSiteAdmin`, `currentuser/groups?$select=Id,Title&$top=5000`, and `associatedownergroup?$select=Id` on metsoft. Site collection admins need only the first request. Owner group IDs are matched to memberships, not guessed from a display name. Incomplete or failed audience responses hide the directory until retry. No permission, membership, sharing, schema, or data writes occur. The embedded audience helper is also used in the METCAL repository's `src/data/portalAccess.js`; update both copies when changing this policy.
 
 The automated browser suite runs the actual HTML inside a SharePoint-shaped iframe with mocked responses. It verifies the request paths, per-site results, and UI behavior but cannot establish real Flank Speed endpoint availability or permissions.

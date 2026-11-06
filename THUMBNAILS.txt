@@ -41,3 +41,12 @@ Files: thumbnails/metrology-confluence-dark.webp and
        thumbnails/metrology-confluence-light.webp.
 Both images are embedded in index.html; no image hosting is required.
 No private SharePoint content or live tenant records were used.
+
+METCAL Quality & Training Portal — added 2026-11-06
+Source: https://github.com/bbaker5150/metcal-quality-workbench
+Source view commit: 9bb1c66bba93fccec58f5973d1d30f2f5a5327f6
+View: Quality & Training Portal launcher, with the NAVAIR seal,
+Quality dashboard, and module cards. Captured locally from the repository's
+development server using its built-in mock dataset; no live tenant records.
+Files: thumbnails/metcal-portal-dark.jpg and metcal-portal-light.jpg.
+Both are 904 x 870 JPEG captures embedded in index.html as data URIs.
