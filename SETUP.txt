@@ -41,8 +41,8 @@ Uncertalytics
 Build measurement uncertainty budgets and assess calibration decision risk.
 https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Uncertalytics.aspx
 
-METBASE
-Tracks SS and ISE data.
+METBASE — temporarily hidden until Firepit cross-web session handling is fixed.
+Original destination retained for a reviewed restoration; no access check or link.
 https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx
 
 Metrology Confluence
@@ -79,7 +79,10 @@ and JavaScript. Uploading this file to Site Assets alone does not reliably make
 it a runnable homepage; it may download or be blocked by tenant policy.
 
 Option A — approved SharePoint hosting and Embed web part:
-Use the existing same-origin SharePoint hosting flow for index.html. Authenticated
+Use the established Firepit 9.2 hosting flow for index.html on its own root page.
+Do not embed this cross-site directory inside a writable application: Firepit
+shares its session write lock with embedded apps. The homepage uses the public
+Firepit site URL and fetch bridge; it does not inspect the parent DOM. Authenticated
 permission checks need the signed-in SharePoint session. An unrelated HTTPS
 host may not support cross-origin SharePoint authentication. Add the Embed web part
 to your SharePoint page and use an iframe pointing to the hosted page:
@@ -108,7 +111,8 @@ This deliverable is standalone HTML, not a packaged SPFx solution.
 BEHAVIOR
 Search matches app names and descriptions. Ctrl+K / Cmd+K focuses search.
 Escape clears focused search. Stars toggle Favorites.
-Favorites and Recent store only app IDs in this browser's localStorage and do
+Outside Firepit's cross-web read-only session, Favorites and Recent store only
+app IDs in this browser's localStorage and do
 not sync between devices. If storage is blocked, state lasts for this visit.
 Recent records launch-link clicks; it does not assert that the destination
 loaded successfully. The homepage does not grant app permissions.
@@ -131,3 +135,11 @@ Run npm ci, npm test, then install the locked Playwright browser and run
 npm run test:browser. CI also uploads the HTML, its checksum, and screenshots.
 Target application availability, SharePoint embedding, and tenant access
 still need the real-account checks in ACCESS.md.
+
+FIREPIT 9.2: METBASE is temporarily hidden for every account and local preview.
+The remaining four app checks stay in the exact metsoft hosting web. A mismatched
+Firepit hosting web fails before any app API request. Favorites, recent apps and
+theme changes persist normally where storage is available. Existing saved METBASE
+preference IDs are retained. Reopen the root Firepit page after replacing the old
+HTML so an earlier foreign read cannot leave the existing session read-only.
+See ACCESS.md for the host defect, actual-runtime regression, and restoration rule.

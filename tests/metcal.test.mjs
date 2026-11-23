@@ -12,7 +12,7 @@ const { readPortalAudience } = scope.window.MetcalAudience;
 const { checkApp } = scope.window.MetrologyAccess;
 const apps = [
   ['modernization-tracker', 'Modernization-Tracker'], ['uncertalytics', 'Uncertalytics'],
-  ['metbase', 'Metrology DB'], ['metrology-confluence', 'Metrology-Confluence'],
+  ['metrology-confluence', 'Metrology-Confluence'],
   ['metcal-portal', 'METCAL Quality & Training Portal'],
 ].map(([id, page]) => ({ id, url: `https://flankspeed.sharepoint-mil.us/sites/${id === 'metbase' ? 'ISEAMETENG' : 'metsoft'}/SitePages/${encodeURIComponent(page)}.aspx` }));
 const group = { Id: 19, Title: 'METCAL Users' };
@@ -23,9 +23,9 @@ function fixture({ groups = [], admin = false, verbose = false, fail, pages = ap
   return { calls, fetchImpl: async (url, options) => {
     calls.push({ url, options });
     if (fail && url.includes(fail)) throw Error('Unavailable');
-    if (url.endsWith('/EffectiveBasePermissions')) {
+    if (url.endsWith('/ListItemAllFields?$select=EffectiveBasePermissions')) {
       const app = apps.find(app => decodeURIComponent(url).includes(decodeURIComponent(new URL(app.url).pathname)));
-      return response({ Low: pages.includes(app?.id) ? '33' : '0', High: '0' });
+      return response({ EffectiveBasePermissions: { Low: pages.includes(app?.id) ? '33' : '0', High: '0' } });
     }
     const body = url.includes('currentuser/groups') ? (verbose ? { results: groups } : { value: groups })
       : url.includes('associatedownergroup') ? { Id: owner.Id } : { Id: 44, IsSiteAdmin: admin };
@@ -54,8 +54,8 @@ test('adding METCAL membership never removes existing Metrology app access', asy
 test('existing app checks never request current user or group information', async () => {
   const f = fixture({ fail: 'currentuser' });
   for (const app of apps.filter(app => app.id !== 'metcal-portal')) assert.equal(await checkApp(app, f), 'allowed');
-  assert.equal(f.calls.length, 4);
-  assert.ok(f.calls.every(call => call.url.endsWith('/EffectiveBasePermissions')));
+  assert.equal(f.calls.length, apps.length - 1);
+  assert.ok(f.calls.every(call => call.url.endsWith('/ListItemAllFields?$select=EffectiveBasePermissions')));
 });
 
 test('a broken METCAL audience check hides only the portal, preserving verified app counts', async () => {
@@ -80,7 +80,7 @@ test('Site Owners take precedence over METCAL membership and retain all candidat
   for (const verbose of [false, true]) {
     const state = await readPortalAudience(fixture({ groups: [group, owner], verbose }));
     assert.equal(state, 'owner');
-    assert.equal((await visibleApps(fixture({ groups: [group, owner], verbose }))).length, 5);
+    assert.equal((await visibleApps(fixture({ groups: [group, owner], verbose }))).length, apps.length);
   }
   const admin = fixture({ admin: true });
   assert.equal(await readPortalAudience(admin), 'owner');
