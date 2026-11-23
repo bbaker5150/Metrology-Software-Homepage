@@ -119,22 +119,39 @@ test('Firepit opaque frames use the exact public site URL without reading the pa
   }
 });
 
-test('foreign web permission checks preserve destinations and use session-only preferences', () => {
+test('the exact Firepit hosting web must match every active app before checking access', () => {
   const own = { id: 'tracker', url: page };
   const foreign = { id: 'metbase', url: 'https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx' };
   const win = { firepit: { sharepoint: { siteUrl: 'https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft/' } } };
-  assert.equal(access.sessionPreferences([own], win), false);
-  assert.equal(access.sessionPreferences([{ url: 'invalid' }, own], win), false);
-  assert.equal(access.sessionPreferences([own, foreign], win), true);
+  assert.equal(access.hostingWebMatches([own], win), true);
+  assert.equal(access.hostingWebMatches([{ url: 'invalid' }, own], win), false);
+  assert.equal(access.hostingWebMatches([own, foreign], win), false);
   win.firepit.sharepoint.siteUrl = 'https://flankspeed.sharepoint-mil.us/sites/metsoft/subweb';
-  assert.equal(access.sessionPreferences([own], win), true);
-  assert.equal(access.sessionPreferences([own, foreign], {}), false);
-  assert.ok(access.permissionUrl(foreign.url).includes('/sites/ISEAMETENG/_api/'));
+  assert.equal(access.hostingWebMatches([own], win), false);
+  assert.equal(access.hostingWebMatches([own], {}), true);
+});
+
+test('foreign or unavailable Firepit context sends no permission request', async () => {
+  for (const siteUrl of ['https://flankspeed.sharepoint-mil.us/sites/Other', 'https://flankspeed.sharepoint-mil.us/sites/metsoft/subweb', '']) {
+    scope.window.firepit = { sharepoint: { siteUrl } };
+    let fetched = false;
+    try {
+      assert.equal(await access.check(page, { fetchImpl: async () => { fetched = true; } }), 'unknown');
+      assert.equal(fetched, false);
+    } finally { delete scope.window.firepit; }
+  }
+});
+
+test('METBASE is retained only as a hidden catalog entry, preserving its destination', () => {
+  const catalog = vm.runInNewContext(html.match(/const APPS=([^;]+);/)[1]);
+  assert.equal(catalog.find(app => app.id === 'metbase').hidden, true);
+  assert.equal(catalog.find(app => app.id === 'metbase').url, 'https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx');
+  assert.equal(catalog.filter(app => !app.hidden).length, 4);
 });
 
 test('uses the public Firepit fetch bridge and selects page-level permission data', async () => {
   const calls = [];
-  scope.window.firepit = { sharepoint: { fetch: async (url, options) => {
+  scope.window.firepit = { sharepoint: { siteUrl: 'https://flankspeed.sharepoint-mil.us/sites/metsoft', fetch: async (url, options) => {
     calls.push({ url, options });
     return response({ d: { EffectiveBasePermissions: { Low: '33', High: '0' } } });
   } } };

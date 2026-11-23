@@ -41,8 +41,8 @@ Uncertalytics
 Build measurement uncertainty budgets and assess calibration decision risk.
 https://flankspeed.sharepoint-mil.us/sites/metsoft/SitePages/Uncertalytics.aspx
 
-METBASE
-Tracks SS and ISE data.
+METBASE — temporarily hidden until Firepit cross-web session handling is fixed.
+Original destination retained for a reviewed restoration; no access check or link.
 https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx
 
 Metrology Confluence
@@ -136,7 +136,10 @@ npm run test:browser. CI also uploads the HTML, its checksum, and screenshots.
 Target application availability, SharePoint embedding, and tenant access
 still need the real-account checks in ACCESS.md.
 
-FIREPIT 9.2: Checking METBASE in ISEAMETENG makes the directory session read-only.
-Favorites, recent apps and theme changes then last for this visit only; the page
-shows that limitation. App destinations and per-page permission filtering remain
-unchanged. Verify live access with ACCESS.md before publishing.
+FIREPIT 9.2: METBASE is temporarily hidden for every account and local preview.
+The remaining four app checks stay in the exact metsoft hosting web. A mismatched
+Firepit hosting web fails before any app API request. Favorites, recent apps and
+theme changes persist normally where storage is available. Existing saved METBASE
+preference IDs are retained. Reopen the root Firepit page after replacing the old
+HTML so an earlier foreign read cannot leave the existing session read-only.
+See ACCESS.md for the host defect, actual-runtime regression, and restoration rule.

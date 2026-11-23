@@ -9,7 +9,6 @@ const host = `${origin}/sites/metsoft/SitePages/Home-Page.aspx`;
 const apps = [
   { id: 'modernization-tracker', name: 'Modernization Tracker', path: '/sites/metsoft/SitePages/Modernization-Tracker.aspx' },
   { id: 'uncertalytics', name: 'Uncertalytics', path: '/sites/metsoft/SitePages/Uncertalytics.aspx' },
-  { id: 'metbase', name: 'METBASE', path: '/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx' },
   { id: 'metrology-confluence', name: 'Metrology Confluence', path: '/sites/metsoft/SitePages/Metrology-Confluence.aspx' },
   { id: 'metcal-portal', name: 'METCAL Quality & Training Portal', path: '/sites/metsoft/SitePages/METCAL%20Quality%20&%20Training%20Portal.aspx' },
 ];
@@ -117,7 +116,7 @@ try {
   // Owners are evaluated per app page too: metsoft ownership does not imply METBASE access.
   f = await fixture({ 'modernization-tracker': 'owner', uncertalytics: 'owner', 'metrology-confluence': 'owner', 'metcal-portal': 'owner', metbase: 'deny' }, { audience: { role: 'owner' } });
   await f.ready();
-  assert.equal(await f.home.locator('[data-open]').count(), apps.length - 1);
+  assert.equal(await f.home.locator('[data-open]').count(), apps.length);
   assert.equal(await f.home.getByRole('link', { name: 'Open METBASE in a new tab' }).count(), 0);
   await f.finish();
 
@@ -218,8 +217,8 @@ try {
   for (const view of [/All apps/, 'Favorites', 'Recent']) {
     await f.home.getByRole('button', { name: view, exact: typeof view === 'string' }).click();
     assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), apps.filter(app => app.id !== 'metcal-portal').map(app => app.id));
-    assert.equal(await f.home.locator('#nav-count').textContent(), '4');
-    assert.equal(await f.home.locator('#result-count').textContent(), '4 applications');
+    assert.equal(await f.home.locator('#nav-count').textContent(), '3');
+    assert.equal(await f.home.locator('#result-count').textContent(), '3 applications');
   }
   await f.finish();
 
@@ -228,7 +227,7 @@ try {
   await f.ready();
   assert.equal(await f.home.locator('[data-open]').count(), apps.length);
   assert.equal(await f.home.locator('#nav-count').textContent(), String(apps.length));
-  assert.equal(await f.home.locator('#result-count').textContent(), '5 applications');
+  assert.equal(await f.home.locator('#result-count').textContent(), '4 applications');
   await f.finish();
 
   // Opening the file locally remains a clearly labeled design preview with no API calls.

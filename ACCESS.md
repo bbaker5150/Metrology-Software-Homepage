@@ -1,6 +1,6 @@
 # Home page access rollout
 
-The Home page checks each application's page permissions independently. Existing Metrology App User access is preserved even when the user also belongs to **METCAL Users**. The extra owner/METCAL membership check applies only to the portal. A failed membership lookup hides only that card; other readable applications remain visible. See [METCAL-ACCESS.md](METCAL-ACCESS.md) for the required SharePoint setup.
+The Home page checks the four active metsoft applications’ page permissions independently. METBASE is temporarily hidden for every account until Firepit’s cross-web session handling is fixed. Existing Metrology App User access is preserved even when the user also belongs to **METCAL Users**. The extra owner/METCAL membership check applies only to the portal. A failed membership lookup hides only that card; other readable applications remain visible. See [METCAL-ACCESS.md](METCAL-ACCESS.md) for the required SharePoint setup.
 
 ## Deploy
 
@@ -8,7 +8,7 @@ The Home page checks each application's page permissions independently. Existing
 2. Give **Tracker Users** Read on the Home page itself and its specific HTML/assets location. Preserve the groups that already use the Home page and SharePoint-generated Limited Access. The Home page does not need to grant Tracker Users access to the entire site, Site Pages library, or other apps.
 3. Keep Tracker Users Read on the published Modernization Tracker page and its required assets/data. Keep the other application pages and data restricted to their intended groups. Existing broad grants from another group, direct sharing, or inheritance still count as access.
 4. Host the page through Firepit 9.2 on its own SharePoint page. The opaque app frame reads its hosting web from `window.firepit.sharepoint.siteUrl` and sends authenticated reads through the public `firepit.sharepoint.fetch` bridge. It does not inspect the parent. Normal SharePoint pages and legacy same-origin `srcdoc` hosting remain supported using the page's own context, base URI, or referrer. An unrelated external host must not be used as a workaround for failed access checks; cross-origin authentication may not be supported. Unknown hosting contexts show a helpful empty state instead of all links.
-5. Refresh the deployed Home page and complete the account checks below. Opening the HTML directly from disk or localhost is a labeled design preview and deliberately shows all five applications; that preview does not validate SharePoint access.
+5. Refresh the deployed Home page and complete the account checks below. Opening the HTML directly from disk or localhost is a labeled design preview and deliberately shows the four active applications; that preview does not validate SharePoint access.
 
 ## Check with real accounts
 
@@ -20,7 +20,7 @@ The Home page checks each application's page permissions independently. Existing
 | Tracker-only Viewer in Tracker Users, with no other app grants | Only Modernization Tracker appears, including in Favorites, Recent, search, and counts. |
 | Tracker Manager or Project Engineer without other app grants | Only Modernization Tracker appears. An elevated Tracker role does not grant suite access. |
 | Existing suite user outside METCAL Users and Site Owners | Existing non-METCAL cards appear for each application page that account can read. |
-| metsoft owner without ISEAMETENG access | Available metsoft apps appear; METBASE stays hidden. |
+| Any account, including owners | METBASE stays hidden in all views and no ISEAMETENG API request is made. |
 | No readable app pages | A clear “No applications available” state appears. |
 | A permission service/network failure | Confirmed apps remain available; unverified apps stay hidden with a retry message. No fallback reveals the complete directory. |
 | Access changed while the Home page is open | Select Refresh, or return to the tab, to check again. Old favorites and recents never override the result. |
@@ -29,7 +29,7 @@ Check the actual destination pages and underlying data URLs as well. If a Tracke
 
 ## Request contract
 
-For each configured app, the Home page derives the correct site collection from the app's published ASPX URL and sends one authenticated GET to:
+For each active app, the Home page derives the correct site collection from the app's published ASPX URL and sends one authenticated GET to:
 
 ```
 <app-web>/_api/web/GetFileByServerRelativePath(decodedurl='<page-path>')/ListItemAllFields?$select=EffectiveBasePermissions
@@ -45,6 +45,10 @@ The automated browser suite runs the actual HTML inside a SharePoint-shaped ifra
 
 ## Firepit 9.2 session behavior
 
-The homepage deliberately checks METBASE in ISEAMETENG and the other apps in metsoft. Those destinations stay unchanged. A foreign-web read makes the entire root Firepit session read-only, including browser-storage writes, even when the read fails. The homepage therefore keeps subsequent favorites, recent-app and theme changes in memory and labels them as applying for this visit. Existing saved preferences can still be read.
+Firepit 9.2 intentionally locks a root session after a foreign-web read. Its packaged storage guards also classify unrelated authenticated bridge messages as storage mutations before checking their message type. Consequently, later permission GETs can show “Blocked action: App storage” even with zero actual storage writes. The optional actual-runtime regression reproduces this sequence, then verifies that the fixed homepage stays writable across repeated checks.
 
-Deploy this directory as its own root Firepit application, not as an embedded child of a writable app: child frames share the parent's read-only session. Applications open in separate tabs through Firepit's normal navigation approval. Validate both ordinary and middle-click navigation and return-to-tab refresh in the tenant. No app links appear before permission verification.
+METBASE is temporarily hidden through `hidden: true` in its catalog entry. It has no rendered card or alternative link and receives no access check, including in local preview. Its original URL, images, and saved preference IDs are retained. Favorites, Recent, search, and counts use only the four verified active apps. Preference changes persist normally when storage is available; the old visit-only notice is removed.
+
+The Firepit hosting web must match every active app’s web. A different web, including a descendant subweb, shows a hosting error before any app API request. The URL comparison accounts for the MCAS government proxy hostname but never retargets requests to a different web. A defensive per-request check also blocks accidental foreign access.
+
+After replacing the older HTML, reopen the root Firepit page: an already read-only session remains locked until reopened. Verify ordinary and middle-click navigation, returning to the homepage, Refresh, and favorite/theme persistence. No app links appear before permission verification. Re-enable METBASE only after the host defect and the intentional cross-web storage limitation have a reviewed solution; do not simply remove the flag to bypass this regression.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
 // Contract fixture: an opaque iframe, the public Firepit API, host-captured
-// navigation and read-only storage after foreign reads. No host implementation
+// navigation and persistent preferences without foreign reads. No host implementation
 // is bundled here. Live tenant permissions remain a deployment check.
 const html = await fs.readFile('index.html', 'utf8');
 const origin = 'https://flankspeed.sharepoint-mil.us';
@@ -31,7 +31,8 @@ await page.exposeFunction('homepageBridgeRequest', ({ url, init }) => {
 await page.exposeFunction('homepageBridgeNavigate', request => { navigation.push(request); if (navigation.length === 3) navigationComplete(); });
 await page.route(host, route => route.fulfill({ contentType: 'text/html', body: '<iframe id="home" sandbox="allow-scripts allow-modals" style="width:1400px;height:1100px"></iframe>' }));
 await page.goto(host);
-await page.evaluate(content => {
+async function load(siteUrl) {
+await page.evaluate(({ content, siteUrl }) => {
   const iframe = document.getElementById('home');
   window.addEventListener('message', async event => {
     if (event.source !== iframe.contentWindow || event.origin !== 'null') return;
@@ -45,8 +46,10 @@ await page.evaluate(content => {
   const bootstrap = `
     const pending = new Map(); let sequence = 0;
     window.__storageWrites = 0;
+    const preferences = new Map([['metsoft-favorites', '["metbase"]'], ['metsoft-recent', '["metbase"]']]);
+    window.__preferences = preferences;
     Object.defineProperty(window, 'localStorage', { value: {
-      getItem() { return null; }, setItem() { window.__storageWrites++; throw new DOMException('Session read-only', 'SecurityError'); }
+      getItem(key) { return preferences.get(key) || null; }, setItem(key, value) { window.__storageWrites++; preferences.set(key, value); }
     } });
     window.addEventListener('message', event => {
       if (event.source !== parent || event.data?.type !== 'response') return;
@@ -54,7 +57,7 @@ await page.evaluate(content => {
       event.data.error ? call.reject(Error(event.data.error)) : call.resolve(new Response(JSON.stringify(event.data.body), {headers:{'content-type':'application/json'}}));
     });
     window.firepit = {
-      sharepoint: { siteUrl: 'https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft', fetch(url, init) {
+      sharepoint: { siteUrl: ${JSON.stringify(siteUrl)}, fetch(url, init) {
         return new Promise((resolve, reject) => { const id=++sequence; pending.set(id,{resolve,reject}); parent.postMessage({type:'request',id,url,init:{method:init.method}},'*'); });
       } },
       openSharePoint(url,target) { parent.postMessage({type:'navigate',url,target},'*'); return Promise.resolve(); }
@@ -73,32 +76,43 @@ await page.evaluate(content => {
   const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'">`;
   const source = content.replace('<head>', '<head>' + policy + '<script>' + bootstrap + '</' + 'script>');
   iframe.src = URL.createObjectURL(new Blob([source], { type: 'text/html' }));
-}, html);
+}, { content: html, siteUrl });
+}
+await load('https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft');
 try {
   const home = page.frameLocator('#home');
   await home.locator('#grid[aria-busy="false"]').waitFor();
-  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['modernization-tracker', 'metbase', 'metcal-portal']);
+  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['modernization-tracker', 'metcal-portal']);
   assert.equal(await home.locator('body').evaluate(() => self.origin), 'null');
-  assert.ok(requests.some(request => request.url.includes('/sites/ISEAMETENG/_api/')));
-  await home.getByText('Favorites, recent apps, and theme changes apply for this visit.').waitFor();
+  assert.ok(requests.every(request => request.url.startsWith(origin + '/sites/metsoft/_api/')));
+  assert.equal(await home.locator('[data-open="metbase"]').count(), 0);
+  assert.equal(await home.locator('body').evaluate(() => window.__storageWrites), 0);
+  assert.equal(await home.locator('body').evaluate(() => window.__preferences.get('metsoft-favorites')), '["metbase"]');
+  assert.equal(await home.locator('#access-note').isVisible(), false);
   await home.getByRole('button', { name: 'Add Modernization Tracker to favorites', exact: true }).click();
-  await home.getByText('Added to favorites · For this visit only').waitFor();
+  await home.getByText('Added to favorites', { exact: true }).waitFor();
   await home.getByRole('button', { name: 'Switch to light theme' }).click();
   await home.getByRole('link', { name: 'Open Modernization Tracker in a new tab' }).click();
   await home.getByRole('button', { name: 'Recent', exact: true }).click();
   assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['modernization-tracker']);
   await home.getByRole('button', { name: /All apps/ }).click();
-  await home.getByRole('link', { name: 'Open METBASE in a new tab' }).click({ button: 'middle' });
+  await home.getByRole('link', { name: 'Open METCAL Quality & Training Portal in a new tab' }).click({ button: 'middle' });
   await home.getByRole('button', { name: 'Recent', exact: true }).click();
-  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['metbase', 'modernization-tracker']);
+  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['metcal-portal', 'modernization-tracker']);
   await home.getByRole('link', { name: 'Back to Site Pages' }).click();
   await Promise.race([navigations, new Promise((_, reject) => { const timer = setTimeout(() => reject(Error('Navigation bridge timed out')), 5000); timer.unref(); })]);
-  assert.equal(await home.locator('body').evaluate(() => window.__storageWrites), 0);
+  assert.ok(await home.locator('body').evaluate(() => window.__storageWrites) > 0);
+  assert.ok(await home.locator('body').evaluate(() => JSON.parse(window.__preferences.get('metsoft-favorites')).includes('metbase')));
   assert.deepEqual(navigation.map(({url,target})=>({url,target})), [
     { url: origin + '/sites/metsoft/SitePages/Modernization-Tracker.aspx', target: '_blank' },
-    { url: origin + '/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx', target: '_blank' },
+    { url: origin + '/sites/metsoft/SitePages/METCAL%20Quality%20&%20Training%20Portal.aspx', target: '_blank' },
     { url: origin + '/sites/metsoft/SitePages', target: '_self' },
   ]);
+  const count = requests.length;
+  await load(origin + '/sites/metsoft/subweb');
+  await home.getByText('Open this Home page on the Metrology Software site (metsoft). Its applications cannot be checked from another Firepit hosting web.').waitFor();
+  assert.equal(await home.locator('[data-open]').count(), 0);
+  assert.equal(requests.length, count, 'Wrong hosting web must send no API requests.');
   assert.deepEqual(errors, []);
-  console.log('Firepit contract checks passed: opaque frame; public bridge; page permissions; original foreign destination; in-memory preferences; captured clicks; middle-click and back navigation.');
+  console.log('Firepit contract checks passed: opaque frame; public bridge; page permissions; no foreign requests; persisted preferences with hidden IDs retained; captured clicks; middle-click and back navigation.');
 } finally { await browser.close(); }
