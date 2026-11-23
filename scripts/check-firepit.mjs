@@ -31,10 +31,12 @@ await page.exposeFunction('homepageBridgeRequest', ({ url, init }) => {
 await page.exposeFunction('homepageBridgeNavigate', request => { navigation.push(request); if (navigation.length === 3) navigationComplete(); });
 await page.route(host, route => route.fulfill({ contentType: 'text/html', body: '<iframe id="home" sandbox="allow-scripts allow-modals" style="width:1400px;height:1100px"></iframe>' }));
 await page.goto(host);
-async function load(siteUrl) {
-await page.evaluate(({ content, siteUrl }) => {
+async function load(siteUrl, savedPreferences = [['metsoft-favorites', '["metbase"]'], ['metsoft-recent', '["metbase"]']]) {
+const loaded = page.waitForEvent('framenavigated', { predicate: frame => frame.parentFrame() === page.mainFrame() });
+await page.evaluate(({ content, siteUrl, savedPreferences }) => {
   const iframe = document.getElementById('home');
-  window.addEventListener('message', async event => {
+  if (window.__homepageMessageHandler) window.removeEventListener('message', window.__homepageMessageHandler);
+  window.__homepageMessageHandler = async event => {
     if (event.source !== iframe.contentWindow || event.origin !== 'null') return;
     const message = event.data;
     if (message.type === 'request') {
@@ -42,11 +44,12 @@ await page.evaluate(({ content, siteUrl }) => {
       catch (error) { event.source.postMessage({ type: 'response', id: message.id, error: error.message }, '*'); }
     }
     if (message.type === 'navigate') await window.homepageBridgeNavigate(message);
-  });
+  };
+  window.addEventListener('message', window.__homepageMessageHandler);
   const bootstrap = `
     const pending = new Map(); let sequence = 0;
     window.__storageWrites = 0;
-    const preferences = new Map([['metsoft-favorites', '["metbase"]'], ['metsoft-recent', '["metbase"]']]);
+    const preferences = new Map(${JSON.stringify(savedPreferences)});
     window.__preferences = preferences;
     Object.defineProperty(window, 'localStorage', { value: {
       getItem(key) { return preferences.get(key) || null; }, setItem(key, value) { window.__storageWrites++; preferences.set(key, value); }
@@ -76,7 +79,8 @@ await page.evaluate(({ content, siteUrl }) => {
   const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'">`;
   const source = content.replace('<head>', '<head>' + policy + '<script>' + bootstrap + '</' + 'script>');
   iframe.src = URL.createObjectURL(new Blob([source], { type: 'text/html' }));
-}, { content: html, siteUrl });
+}, { content: html, siteUrl, savedPreferences });
+await loaded;
 }
 await load('https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft');
 try {
@@ -101,13 +105,26 @@ try {
   assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['metcal-portal', 'modernization-tracker']);
   await home.getByRole('link', { name: 'Back to Site Pages' }).click();
   await Promise.race([navigations, new Promise((_, reject) => { const timer = setTimeout(() => reject(Error('Navigation bridge timed out')), 5000); timer.unref(); })]);
-  assert.ok(await home.locator('body').evaluate(() => window.__storageWrites) > 0);
-  assert.ok(await home.locator('body').evaluate(() => JSON.parse(window.__preferences.get('metsoft-favorites')).includes('metbase')));
+  const savedPreferences = await home.locator('body').evaluate(() => Array.from(window.__preferences));
+  const persisted = new Map(savedPreferences);
+  assert.deepEqual(JSON.parse(persisted.get('metsoft-favorites')), ['metbase', 'modernization-tracker']);
+  assert.deepEqual(JSON.parse(persisted.get('metsoft-recent')), ['metcal-portal', 'modernization-tracker', 'metbase']);
+  assert.equal(persisted.get('theme'), 'light');
   assert.deepEqual(navigation.map(({url,target})=>({url,target})), [
     { url: origin + '/sites/metsoft/SitePages/Modernization-Tracker.aspx', target: '_blank' },
     { url: origin + '/sites/metsoft/SitePages/METCAL%20Quality%20&%20Training%20Portal.aspx', target: '_blank' },
     { url: origin + '/sites/metsoft/SitePages', target: '_self' },
   ]);
+  await load('https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft', savedPreferences);
+  await home.locator('#grid[aria-busy="false"]').waitFor();
+  assert.equal(await home.locator('html').getAttribute('data-theme'), 'light');
+  await home.getByRole('button', { name: 'Favorites', exact: true }).click();
+  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['modernization-tracker']);
+  await home.getByRole('button', { name: 'Recent', exact: true }).click();
+  assert.deepEqual(await home.locator('[data-open]').evaluateAll(nodes => nodes.map(node => node.dataset.open)), ['metcal-portal', 'modernization-tracker']);
+  assert.deepEqual(await home.locator('body').evaluate(() => Array.from(window.__preferences)), savedPreferences);
+  assert.equal(await home.locator('body').evaluate(() => window.__storageWrites), 0, 'Reload must preserve saved hidden IDs without rewriting preferences.');
+  assert.ok(requests.every(request => request.url.startsWith(origin + '/sites/metsoft/_api/')));
   const count = requests.length;
   await load(origin + '/sites/metsoft/subweb');
   await home.getByText('Open this Home page on the Metrology Software site (metsoft). Its applications cannot be checked from another Firepit hosting web.').waitFor();
