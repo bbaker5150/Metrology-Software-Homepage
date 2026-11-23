@@ -23,9 +23,9 @@ function fixture({ groups = [], admin = false, verbose = false, fail, pages = ap
   return { calls, fetchImpl: async (url, options) => {
     calls.push({ url, options });
     if (fail && url.includes(fail)) throw Error('Unavailable');
-    if (url.endsWith('/EffectiveBasePermissions')) {
+    if (url.endsWith('/ListItemAllFields?$select=EffectiveBasePermissions')) {
       const app = apps.find(app => decodeURIComponent(url).includes(decodeURIComponent(new URL(app.url).pathname)));
-      return response({ Low: pages.includes(app?.id) ? '33' : '0', High: '0' });
+      return response({ EffectiveBasePermissions: { Low: pages.includes(app?.id) ? '33' : '0', High: '0' } });
     }
     const body = url.includes('currentuser/groups') ? (verbose ? { results: groups } : { value: groups })
       : url.includes('associatedownergroup') ? { Id: owner.Id } : { Id: 44, IsSiteAdmin: admin };
@@ -55,7 +55,7 @@ test('existing app checks never request current user or group information', asyn
   const f = fixture({ fail: 'currentuser' });
   for (const app of apps.filter(app => app.id !== 'metcal-portal')) assert.equal(await checkApp(app, f), 'allowed');
   assert.equal(f.calls.length, 4);
-  assert.ok(f.calls.every(call => call.url.endsWith('/EffectiveBasePermissions')));
+  assert.ok(f.calls.every(call => call.url.endsWith('/ListItemAllFields?$select=EffectiveBasePermissions')));
 });
 
 test('a broken METCAL audience check hides only the portal, preserving verified app counts', async () => {

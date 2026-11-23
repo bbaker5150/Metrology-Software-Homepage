@@ -7,7 +7,7 @@ The Home page checks each application's page permissions independently. Existing
 1. Replace the existing Home page HTML with this repository's `index.html`, using the same approved hosting flow. Publish/check in the updated file and page as required by your site. The file remains self-contained, with embedded branding and thumbnails.
 2. Give **Tracker Users** Read on the Home page itself and its specific HTML/assets location. Preserve the groups that already use the Home page and SharePoint-generated Limited Access. The Home page does not need to grant Tracker Users access to the entire site, Site Pages library, or other apps.
 3. Keep Tracker Users Read on the published Modernization Tracker page and its required assets/data. Keep the other application pages and data restricted to their intended groups. Existing broad grants from another group, direct sharing, or inheritance still count as access.
-4. Host the page in the SharePoint origin so requests use the signed-in user's existing session. Normal SharePoint pages and same-origin embedded `srcdoc` hosting are supported. The page detects context from its URL, parent SharePoint context, or referrer. An unrelated external host must not be used as a workaround for failed access checks; cross-origin authentication may not be supported. Unknown hosting contexts show a helpful empty state instead of all links.
+4. Host the page through Firepit 9.2 on its own SharePoint page. The opaque app frame reads its hosting web from `window.firepit.sharepoint.siteUrl` and sends authenticated reads through the public `firepit.sharepoint.fetch` bridge. It does not inspect the parent. Normal SharePoint pages and legacy same-origin `srcdoc` hosting remain supported using the page's own context, base URI, or referrer. An unrelated external host must not be used as a workaround for failed access checks; cross-origin authentication may not be supported. Unknown hosting contexts show a helpful empty state instead of all links.
 5. Refresh the deployed Home page and complete the account checks below. Opening the HTML directly from disk or localhost is a labeled design preview and deliberately shows all five applications; that preview does not validate SharePoint access.
 
 ## Check with real accounts
@@ -32,11 +32,19 @@ Check the actual destination pages and underlying data URLs as well. If a Tracke
 For each configured app, the Home page derives the correct site collection from the app's published ASPX URL and sends one authenticated GET to:
 
 ```
-<app-web>/_api/web/GetFileByServerRelativePath(decodedurl='<page-path>')/ListItemAllFields/EffectiveBasePermissions
+<app-web>/_api/web/GetFileByServerRelativePath(decodedurl='<page-path>')/ListItemAllFields?$select=EffectiveBasePermissions
 ```
+
+Firepit 9.2 allows the item property-selection route; the old `/ListItemAllFields/EffectiveBasePermissions` navigation suffix is blocked. The response must contain the page item's `EffectiveBasePermissions` property (normal or verbose envelope); missing/malformed values keep that card hidden. This follows [SharePoint's `$select` query contract](https://learn.microsoft.com/en-us/sharepoint/dev/sp-add-ins/use-odata-query-operations-in-sharepoint-rest-requests) and [list-item effective permissions](https://learn.microsoft.com/en-us/dotnet/api/microsoft.sharepoint.client.listitem.effectivebasepermissions?view=sharepoint-csom). Confirm the response shape on the live tenant during rollout.
 
 It requires valid 32-bit High/Low permission words and both ViewListItems (1) and OpenItems (32), matching the Tracker's page-access requirement. Standard and verbose JSON responses are supported. A 403/404 response omits that app. Authentication failures, login HTML, redirects, malformed JSON/permission data, server errors, and a 15-second timeout produce an unverified result.
 
 Only after confirming Read on the METCAL page, authenticated GETs read `currentuser?$select=Id,IsSiteAdmin`, `currentuser/groups?$select=Id,Title&$top=5000`, and `associatedownergroup?$select=Id` on metsoft. Site collection admins need only the first request. Owner group IDs are matched to memberships, not guessed from a display name. Incomplete or failed audience responses hide the portal until retry; existing app page checks do not depend on these endpoints. No permission, membership, sharing, schema, or data writes occur. The embedded audience helper is also used in the METCAL repository's `src/data/portalAccess.js`; update both copies when changing this policy.
 
 The automated browser suite runs the actual HTML inside a SharePoint-shaped iframe with mocked responses. It verifies the request paths, per-site results, and UI behavior but cannot establish real Flank Speed endpoint availability or permissions.
+
+## Firepit 9.2 session behavior
+
+The homepage deliberately checks METBASE in ISEAMETENG and the other apps in metsoft. Those destinations stay unchanged. A foreign-web read makes the entire root Firepit session read-only, including browser-storage writes, even when the read fails. The homepage therefore keeps subsequent favorites, recent-app and theme changes in memory and labels them as applying for this visit. Existing saved preferences can still be read.
+
+Deploy this directory as its own root Firepit application, not as an embedded child of a writable app: child frames share the parent's read-only session. Applications open in separate tabs through Firepit's normal navigation approval. Validate both ordinary and middle-click navigation and return-to-tab refresh in the tenant. No app links appear before permission verification.

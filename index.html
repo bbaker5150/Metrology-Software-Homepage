@@ -68,19 +68,7 @@ window.MetcalAudience = (() => {
 const PORTAL_WEB = 'https://flankspeed.sharepoint-mil.us/sites/metsoft';
 const PORTAL_GROUP = 'METCAL Users';
 
-function hostingMode(win = window) {
-  const hints = [];
-  try { hints.push(win.location.href, win._spPageContextInfo?.webAbsoluteUrl); } catch {}
-  try { hints.push(win.parent.location.href, win.parent._spPageContextInfo?.webAbsoluteUrl); } catch {}
-  try { hints.push(win.document.referrer); } catch {}
-  const urls = hints.flatMap(value => { try { return [new URL(value)]; } catch { return []; } });
-  if (urls.some(url => url.origin === new URL(PORTAL_WEB).origin)) return 'sharepoint';
-  const local = url => ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-  if (urls.some(url => /^https?:$/.test(url.protocol) && !local(url))) return 'unavailable';
-  return urls.some(url => url.protocol === 'file:' || /^https?:$/.test(url.protocol) && local(url)) ? 'preview' : 'unavailable';
-}
-
-async function readPortalAudience({ fetchImpl = fetch, timeoutMs = 15000 } = {}) {
+async function readPortalAudience({ fetchImpl = window.firepit?.sharepoint?.fetch || fetch, timeoutMs = 15000 } = {}) {
   const controller = new AbortController();
   let timer;
   const read = async path => {
@@ -117,10 +105,6 @@ async function readPortalAudience({ fetchImpl = fetch, timeoutMs = 15000 } = {})
   } finally { clearTimeout(timer); }
 }
 
-function mayUsePortal(audience) {
-  return audience === 'owner' || audience === 'metcal';
-}
-
 return { readPortalAudience };
 })();
 </script>
@@ -131,17 +115,46 @@ return { readPortalAudience };
 window.MetrologyAccess = (() => {
   const tenantOrigin = 'https://flankspeed.sharepoint-mil.us';
   const localHost = url => ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  function trustedTenant(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+        url.hostname.toLowerCase().replace(/\.mcas-gov\.us$/, '') === new URL(tenantOrigin).hostname;
+    } catch { return false; }
+  }
+  function firepitSite(win = window) {
+    const value = win.firepit?.sharepoint?.siteUrl;
+    return trustedTenant(value) ? new URL(value).href.replace(/\/$/, '') : '';
+  }
   function environment(win = window) {
+    // Firepit 9.2 exposes its exact hosting web through the public bridge.
+    // Its opaque Blob URL and inaccessible parent are not SharePoint context.
+    if (win.firepit?.sharepoint) return firepitSite(win) ? 'sharepoint' : 'unavailable';
     const hints = [];
     try { hints.push(win.location.href, win._spPageContextInfo?.webAbsoluteUrl); } catch {}
-    try { hints.push(win.parent.location.href, win.parent._spPageContextInfo?.webAbsoluteUrl); } catch {}
-    try { hints.push(win.document.referrer); } catch {}
+    try { hints.push(win.document.referrer);
+      if (/^about:(?:srcdoc|blank)$/.test(win.location.href)) hints.push(win.document.baseURI);
+    } catch {}
     const urls = hints.flatMap(value => { try { return [new URL(value)]; } catch { return []; } });
-    if (urls.some(url => url.origin === tenantOrigin)) return 'sharepoint';
+    if (urls.some(url => trustedTenant(url.href))) return 'sharepoint';
     // Preview is a local development mode, never a fallback for a failed check.
     const remote = urls.some(url => /^https?:$/.test(url.protocol) && !localHost(url));
     if (!remote && urls.some(url => url.protocol === 'file:' || /^https?:$/.test(url.protocol) && localHost(url))) return 'preview';
     return 'unavailable';
+  }
+  function sessionPreferences(apps, win = window) {
+    const host = firepitSite(win);
+    if (!host) return false;
+    const webKey = value => {
+      const url = new URL(value);
+      return url.hostname.toLowerCase().replace(/\.mcas-gov\.us$/, '') + decodeURIComponent(url.pathname).replace(/\/$/, '').toLowerCase();
+    };
+    // Reading even one foreign web locks the root Firepit session's storage.
+    // Preserve each app's real web; preferences remain in memory for this visit.
+    return apps.some(app => {
+      try { return webKey(permissionUrl(app.url).split('/_api/')[0]) !== webKey(host); }
+      catch { return false; } // Invalid catalog entries fail their own access check.
+    });
   }
   function permissionUrl(appUrl) {
     const target = new URL(appUrl);
@@ -149,7 +162,7 @@ window.MetrologyAccess = (() => {
     const page = target.pathname.match(/^((?:\/(?:sites|teams)\/[^/]+)?)\/(?:SitePages|Pages)\/.+\.aspx$/i);
     if (!page) throw new Error('Use a published SharePoint application page');
     const path = encodeURIComponent(decodeURIComponent(target.pathname).replace(/'/g, "''"));
-    return `${target.origin}${page[1]}/_api/web/GetFileByServerRelativePath(decodedurl='${path}')/ListItemAllFields/EffectiveBasePermissions`;
+    return `${target.origin}${page[1]}/_api/web/GetFileByServerRelativePath(decodedurl='${path}')/ListItemAllFields?$select=EffectiveBasePermissions`;
   }
   function permissionWord(value) {
     if (!(typeof value === 'string' && /^\d+$/.test(value)) && !(typeof value === 'number' && Number.isInteger(value))) throw new Error('Missing permission bits');
@@ -165,7 +178,7 @@ window.MetrologyAccess = (() => {
     // ViewListItems + OpenItems, matching Tracker's invitation page check.
     return (low & 33n) === 33n;
   }
-  async function check(appUrl, { fetchImpl = fetch, timeoutMs = 15000 } = {}) {
+  async function check(appUrl, { fetchImpl = window.firepit?.sharepoint?.fetch || fetch, timeoutMs = 15000 } = {}) {
     const controller = new AbortController();
     let timer;
     const pending = (async () => {
@@ -195,7 +208,7 @@ window.MetrologyAccess = (() => {
     if (audience === 'owner' || audience === 'metcal') return 'allowed';
     return audience === 'other' ? 'denied' : 'unknown';
   }
-  return { environment, permissionUrl, mayOpen, check, checkApp };
+  return { environment, firepitSite, sessionPreferences, permissionUrl, mayOpen, check, checkApp };
 })();
 </script>
 
@@ -215,7 +228,7 @@ const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 const $=id=>document.getElementById(id);
 let storageAvailable=true;
 function read(name){try{const v=JSON.parse(localStorage.getItem('metsoft-'+name)||'[]');return Array.isArray(v)?v.filter(id=>APPS.some(a=>a.id===id)):[]}catch{storageAvailable=false;return []}}
-function save(name,value){try{localStorage.setItem('metsoft-'+name,JSON.stringify(value))}catch{storageAvailable=false}}
+function save(name,value){if(!storageAvailable)return;try{localStorage.setItem('metsoft-'+name,JSON.stringify(value))}catch{storageAvailable=false}}
 let favorites=new Set(read('favorites')),recent=read('recent'),view='all',timer;
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
 document.querySelector('kbd').textContent=/Mac|iPhone|iPad/.test(navigator.platform)?'⌘ K':'Ctrl K';
@@ -223,11 +236,13 @@ document.querySelector('kbd').textContent=/Mac|iPhone|iPad/.test(navigator.platf
 const sun='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>';
 const moon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13.1A9 9 0 0 1 10.9 3.2a9 9 0 1 0 9.9 9.9Z"/></svg>';
 function updateThemeControl(){const dark=document.documentElement.dataset.theme==='dark';const label='Switch to '+(dark?'light':'dark')+' theme';$('theme-toggle').innerHTML=dark?sun:moon;$('theme-toggle').setAttribute('aria-label',label);$('theme-toggle').title=label;document.querySelector('meta[name="theme-color"]').content=dark?'#0b1220':'#f5f7fb'}
-$('theme-toggle').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;try{localStorage.setItem('theme',next)}catch{}updateThemeControl()};
+$('theme-toggle').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;if(storageAvailable){try{localStorage.setItem('theme',next)}catch{storageAvailable=false}}updateThemeControl()};
 updateThemeControl();
 
 let accessibleApps = [], accessState = 'loading', accessIncomplete = false, checking;
 const accessEnvironment = MetrologyAccess.environment();
+const sessionPreferences = MetrologyAccess.sessionPreferences(APPS);
+if (sessionPreferences) storageAvailable = false;
 
 function emptyState(title, description, glyph = 'grid') {
   $('grid').innerHTML = `<div class="empty access-empty">${icon(glyph)}<h3>${esc(title)}</h3><p>${esc(description)}</p></div>`;
@@ -240,6 +255,7 @@ function render() {
   $('refresh-access').disabled = accessState === 'loading';
   $('nav-count').textContent = accessState === 'loading' ? '…' : accessibleApps.length;
   $('access-note').hidden = true;
+  $('access-note').textContent = '';
   $('under-card').hidden = true;
   if (accessState === 'loading') {
     $('result-count').textContent = 'Checking access…';
@@ -254,6 +270,11 @@ function render() {
   } else if (accessIncomplete && accessibleApps.length) {
     $('access-note').hidden = false;
     $('access-note').textContent = 'Some applications couldn’t be checked. Select Refresh to try again.';
+  }
+  if (sessionPreferences) {
+    $('access-note').hidden = false;
+    if ($('access-note').textContent) $('access-note').textContent += ' ';
+    $('access-note').textContent += 'Favorites, recent apps, and theme changes apply for this visit.';
   }
   if (!accessibleApps.length) {
     $('result-count').textContent = '0 applications';
@@ -307,8 +328,27 @@ document.addEventListener('visibilitychange', () => {
 function setView(next){view=next;document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));$('view-title').textContent={all:'Applications',favorites:'Your favorites',recent:'Recently opened'}[view];render()}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{$('search').value='';setView(b.dataset.view)});
 $('search').addEventListener('input',render);$('clear').onclick=()=>{$('search').value='';render();$('search').focus()};
-$('grid').onclick=e=>{const favorite=e.target.closest('[data-favorite]');if(favorite){const id=favorite.dataset.favorite;if(!accessibleApps.some(a=>a.id===id)){e.preventDefault();return}favorites.has(id)?favorites.delete(id):favorites.add(id);save('favorites',[...favorites]);render();const button=Array.from(document.querySelectorAll('[data-favorite]')).find(b=>b.dataset.favorite===id);(button||document.querySelector('[data-view="favorites"]')).focus();$('toast').textContent=(favorites.has(id)?'Added to favorites':'Removed from favorites')+(!storageAvailable?' · For this visit only':'');clearTimeout(timer);timer=setTimeout(()=>$('toast').textContent='',2400);return}const link=e.target.closest('[data-open]');if(link){if(!accessibleApps.some(a=>a.id===link.dataset.open)){e.preventDefault();return}recent=[link.dataset.open,...recent.filter(id=>id!==link.dataset.open)].slice(0,20);save('recent',recent)}};
-$('grid').addEventListener('auxclick',e=>{const link=e.target.closest('[data-open]');if(e.button===1&&link){if(!accessibleApps.some(a=>a.id===link.dataset.open)){e.preventDefault();return}recent=[link.dataset.open,...recent.filter(id=>id!==link.dataset.open)].slice(0,20);save('recent',recent)}});
+$('grid').onclick=e=>{const favorite=e.target.closest('[data-favorite]');if(favorite){const id=favorite.dataset.favorite;if(!accessibleApps.some(a=>a.id===id)){e.preventDefault();return}favorites.has(id)?favorites.delete(id):favorites.add(id);save('favorites',[...favorites]);render();const button=Array.from(document.querySelectorAll('[data-favorite]')).find(b=>b.dataset.favorite===id);(button||document.querySelector('[data-view="favorites"]')).focus();$('toast').textContent=(favorites.has(id)?'Added to favorites':'Removed from favorites')+(!storageAvailable?' · For this visit only':'');clearTimeout(timer);timer=setTimeout(()=>$('toast').textContent='',2400)}};
+function recordAppOpen(event) {
+  if (event.type === 'auxclick' && event.button !== 1) return;
+  const link = event.target.closest?.('[data-open]');
+  if (!link || !$('grid').contains(link)) return;
+  const app = accessibleApps.find(app => app.id === link.dataset.open);
+  if (!app) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+  recent = [app.id, ...recent.filter(id => id !== app.id)].slice(0, 20);
+  save('recent', recent);
+  // Firepit captures ordinary clicks at document level and owns approval.
+  // Its sanitized href is a placeholder for middle clicks, so use its public API.
+  if (event.type === 'auxclick' && typeof window.firepit?.openSharePoint === 'function') {
+    event.preventDefault();
+    Promise.resolve().then(() => window.firepit.openSharePoint(app.url, '_blank')).catch(() => {
+      $('toast').textContent = 'The application could not be opened. Try its link again.';
+    });
+  }
+}
+// Window capture runs before Firepit's document capture stops click propagation.
+window.addEventListener('click', recordAppOpen, true);
+window.addEventListener('auxclick', recordAppOpen, true);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('search').focus()}if(e.key==='Escape'&&document.activeElement===$('search')){$('search').value='';render()}});
 refreshAccess();
 </script>

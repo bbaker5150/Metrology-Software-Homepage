@@ -12,7 +12,7 @@ A self-contained, responsive application directory for the Metrology Software Sh
 
 The top-left back arrow returns to the SharePoint site’s `SitePages/` endpoint, navigating the full browser page when the homepage is embedded.
 
-Each available card is a native link that opens the app in a new tab. Favorite controls remain separate. Search, favorites, recently opened apps, and light/dark themes are included. Browser preferences are stored locally when storage is available.
+Each available card is a native link that opens the app in a new tab. Favorite controls remain separate. Search, favorites, recently opened apps, and light/dark themes are included. Browser preferences are stored locally when storage is available. In Firepit 9.2, checking METBASE's separate SharePoint web locks session storage writes; favorites, recents and theme changes then apply for the current visit, with a visible note. Open this directory as its own root Firepit app so its foreign-web checks do not lock a writable parent app.
 
 ## Application visibility
 
@@ -49,7 +49,7 @@ npx --no-install playwright install --with-deps chromium
 npm run test:browser
 ```
 
-Playwright and its core dependency are locked to the same version. CI runs on pull requests and main, checks dependencies, runs permission-contract and packaged-browser tests, then uploads the deployable HTML with a checksum and UI screenshots. Automated checks cover Tracker-only access across all views, per-site owner access, loading without link flashes, retry/revocation, failed authentication/network responses, native keyboard navigation, favorites/recents, both themes, and widths from 320 to 1920 pixels. They use mocked SharePoint responses; actual tenant access and embedding still require the checks in ACCESS.md.
+Playwright and its core dependency are locked to the same version. CI runs on pull requests and main, checks dependencies, runs permission-contract and packaged-browser tests, then uploads the deployable HTML with a checksum and UI screenshots. Automated checks cover Tracker-only access across all views, per-site owner access, loading without link flashes, retry/revocation, failed authentication/network responses, native keyboard navigation, favorites/recents, both themes, and widths from 320 to 1920 pixels. An additional opaque-iframe fixture checks the public Firepit bridge, selected page permissions, host-captured navigation and in-memory preferences with storage writes denied. They use mocked SharePoint responses; actual tenant access and embedding still require the checks in ACCESS.md.
 
 ## App thumbnails
 

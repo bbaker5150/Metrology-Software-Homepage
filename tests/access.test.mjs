@@ -17,7 +17,7 @@ const response = (body, status = 200, type = 'application/json;odata=nometadata'
 test('checks METBASE permissions on its own SharePoint site and encodes its page path', () => {
   const url = new URL(access.permissionUrl('https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx'));
   assert.ok(url.pathname.startsWith('/sites/ISEAMETENG/_api/web/'));
-  assert.equal(decodeURIComponent(url.pathname), "/sites/ISEAMETENG/_api/web/GetFileByServerRelativePath(decodedurl='/sites/ISEAMETENG/SitePages/Metrology DB.aspx')/ListItemAllFields/EffectiveBasePermissions");
+  assert.equal(decodeURIComponent(url.pathname + url.search), "/sites/ISEAMETENG/_api/web/GetFileByServerRelativePath(decodedurl='/sites/ISEAMETENG/SitePages/Metrology DB.aspx')/ListItemAllFields?$select=EffectiveBasePermissions");
   assert.match(decodeURIComponent(access.permissionUrl(page.replace('Modernization-Tracker', "Engineer%27s%20Tracker"))), /Engineer''s Tracker/);
 });
 
@@ -86,7 +86,7 @@ test('a stalled host or response body times out even if fetch ignores abort', as
 test('embedded SharePoint context wins over preview and failed detection never previews all apps', () => {
   const win = (href, parentHref, referrer = '') => ({ location: { href }, parent: { location: { href: parentHref } }, document: { referrer } });
   assert.equal(access.environment(win(page, page)), 'sharepoint');
-  assert.equal(access.environment(win('about:srcdoc', page)), 'sharepoint');
+  assert.equal(access.environment(win('about:srcdoc', page, page)), 'sharepoint');
   const restricted = win('about:srcdoc', '', page);
   Object.defineProperty(restricted.parent, 'location', { get() { throw new Error('Cross-origin frame'); } });
   assert.equal(access.environment(restricted), 'sharepoint');
@@ -94,7 +94,7 @@ test('embedded SharePoint context wins over preview and failed detection never p
   assert.equal(access.environment(win('https://other.example/home', 'https://other.example')), 'unavailable');
   assert.equal(access.environment(win('file:///tmp/index.html', 'file:///tmp/index.html')), 'preview');
   assert.equal(access.environment(win('http://localhost:4173', 'http://localhost:4173')), 'preview');
-  assert.equal(access.environment(win('http://localhost:4173', page)), 'sharepoint');
+  assert.equal(access.environment(win('http://localhost:4173', page, page)), 'sharepoint');
 });
 
 test('no-JavaScript markup cannot bypass access filtering', () => {
@@ -103,4 +103,45 @@ test('no-JavaScript markup cannot bypass access filtering', () => {
   assert.match(fallback, /Enable JavaScript/);
   assert.match(html, /id="nav-count">…<\/span>/);
   assert.doesNotMatch(html, /id="result-count">4 applications/);
+});
+
+test('Firepit opaque frames use the exact public site URL without reading the parent', () => {
+  const win = { location: { href: 'blob:null/example' }, document: { referrer: '' }, firepit: { sharepoint: { siteUrl: 'https://flankspeed.sharepoint-mil.us/sites/metsoft/subweb' } } };
+  Object.defineProperty(win, 'parent', { get() { throw Error('Parent context must not be inspected'); } });
+  assert.equal(access.environment(win), 'sharepoint');
+  assert.equal(access.firepitSite(win), 'https://flankspeed.sharepoint-mil.us/sites/metsoft/subweb');
+  win.firepit.sharepoint.siteUrl = 'https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft';
+  assert.equal(access.environment(win), 'sharepoint');
+  for (const siteUrl of ['', 'blob:null/example', 'https://other.sharepoint-mil.us/sites/metsoft', 'http://flankspeed.sharepoint-mil.us/sites/metsoft']) {
+    win.firepit.sharepoint.siteUrl = siteUrl;
+    win._spPageContextInfo = { webAbsoluteUrl: 'https://flankspeed.sharepoint-mil.us/sites/metsoft' };
+    assert.equal(access.environment(win), 'unavailable');
+  }
+});
+
+test('foreign web permission checks preserve destinations and use session-only preferences', () => {
+  const own = { id: 'tracker', url: page };
+  const foreign = { id: 'metbase', url: 'https://flankspeed.sharepoint-mil.us/sites/ISEAMETENG/SitePages/Metrology%20DB.aspx' };
+  const win = { firepit: { sharepoint: { siteUrl: 'https://flankspeed.sharepoint-mil.us.mcas-gov.us/sites/metsoft/' } } };
+  assert.equal(access.sessionPreferences([own], win), false);
+  assert.equal(access.sessionPreferences([{ url: 'invalid' }, own], win), false);
+  assert.equal(access.sessionPreferences([own, foreign], win), true);
+  win.firepit.sharepoint.siteUrl = 'https://flankspeed.sharepoint-mil.us/sites/metsoft/subweb';
+  assert.equal(access.sessionPreferences([own], win), true);
+  assert.equal(access.sessionPreferences([own, foreign], {}), false);
+  assert.ok(access.permissionUrl(foreign.url).includes('/sites/ISEAMETENG/_api/'));
+});
+
+test('uses the public Firepit fetch bridge and selects page-level permission data', async () => {
+  const calls = [];
+  scope.window.firepit = { sharepoint: { fetch: async (url, options) => {
+    calls.push({ url, options });
+    return response({ d: { EffectiveBasePermissions: { Low: '33', High: '0' } } });
+  } } };
+  try {
+    assert.equal(await access.check(page), 'allowed');
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.endsWith('/ListItemAllFields?$select=EffectiveBasePermissions'));
+    assert.equal(calls[0].options.method, 'GET');
+  } finally { delete scope.window.firepit; }
 });

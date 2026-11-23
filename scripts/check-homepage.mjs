@@ -48,7 +48,7 @@ async function fixture(states, { audience = { role: 'other' }, seed = false, sta
         : url.pathname.endsWith('/associatedownergroup') ? { Id: 7 } : { Id: 44, IsSiteAdmin: false };
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
     }
-    if (request.method() !== 'GET' || !url.pathname.endsWith('/ListItemAllFields/EffectiveBasePermissions')) unexpected.push(`${request.method()} ${url.pathname}`);
+    if (request.method() !== 'GET' || !url.pathname.endsWith('/ListItemAllFields') || url.search !== '?$select=EffectiveBasePermissions') unexpected.push(`${request.method()} ${url.pathname}`);
     const app = apps.find(app => decodeURIComponent(url.pathname).includes(`decodedurl='${decodeURIComponent(app.path)}'`));
     if (!app) { unexpected.push(url.href); return route.abort(); }
     const web = app.path.split('/SitePages/')[0];
@@ -59,7 +59,7 @@ async function fixture(states, { audience = { role: 'other' }, seed = false, sta
     if (state === 'login') return route.fulfill({ status: 200, contentType: 'text/html', body: '<html>Sign in</html>' });
     const status = state === 'deny' ? 403 : state === 'missing' ? 404 : state === 'error' ? 503 : 200;
     const body = state === 'owner' ? { d: { EffectiveBasePermissions: { Low: '4294967295', High: '2147483647' } } }
-      : state === 'allow' ? { Low: '33', High: '0' } : state === 'malformed' ? { Low: '33' } : { error: { message: 'Unavailable' } };
+      : state === 'allow' ? { EffectiveBasePermissions: { Low: '33', High: '0' } } : state === 'malformed' ? { EffectiveBasePermissions: { Low: '33' } } : { error: { message: 'Unavailable' } };
     return route.fulfill({ status, contentType: 'application/json;odata=nometadata', body: JSON.stringify(body) });
   });
   await page.goto(host);
@@ -95,7 +95,7 @@ try {
   await f.page.waitForTimeout(100);
   await f.release();
   await f.ready();
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, apps.length);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/ListItemAllFields')).length, apps.length);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['modernization-tracker']);
   assert.equal(await f.home.locator('#nav-count').textContent(), '1');
   await screenshot(f, 'tracker-only-desktop');
@@ -173,7 +173,7 @@ try {
   states['modernization-tracker'] = 'deny'; states.uncertalytics = 'allow';
   await f.home.getByRole('button', { name: 'Refresh application access' }).click();
   await f.ready();
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, 2 * apps.length);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/ListItemAllFields')).length, 2 * apps.length);
   assert.deepEqual(await f.home.locator('[data-open]').evaluateAll(links => links.map(link => link.dataset.open)), ['uncertalytics']);
   assert.equal(await f.home.locator('#access-note').isHidden(), true);
   await f.home.getByRole('button', { name: 'Favorites', exact: true }).click();
@@ -203,7 +203,7 @@ try {
     assert.equal(await f.home.locator('#nav-count').textContent(), '1');
     assert.equal(await f.home.locator('#result-count').textContent(), '1 application');
   }
-  assert.equal(f.requests.filter(request => request.path.endsWith('/EffectiveBasePermissions')).length, apps.length);
+  assert.equal(f.requests.filter(request => request.path.endsWith('/ListItemAllFields')).length, apps.length);
   await screenshot(f, 'metcal-only');
   audience.role = 'unknown';
   await f.home.getByRole('button', { name: 'Refresh application access' }).click();

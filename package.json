@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "test:browser": "node scripts/check-homepage.mjs"
+    "test:browser": "node scripts/check-homepage.mjs && node scripts/check-firepit.mjs"
   },
   "devDependencies": {
     "playwright": "1.64.1"

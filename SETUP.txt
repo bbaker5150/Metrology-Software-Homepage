@@ -79,7 +79,10 @@ and JavaScript. Uploading this file to Site Assets alone does not reliably make
 it a runnable homepage; it may download or be blocked by tenant policy.
 
 Option A — approved SharePoint hosting and Embed web part:
-Use the existing same-origin SharePoint hosting flow for index.html. Authenticated
+Use the established Firepit 9.2 hosting flow for index.html on its own root page.
+Do not embed this cross-site directory inside a writable application: Firepit
+shares its session write lock with embedded apps. The homepage uses the public
+Firepit site URL and fetch bridge; it does not inspect the parent DOM. Authenticated
 permission checks need the signed-in SharePoint session. An unrelated HTTPS
 host may not support cross-origin SharePoint authentication. Add the Embed web part
 to your SharePoint page and use an iframe pointing to the hosted page:
@@ -108,7 +111,8 @@ This deliverable is standalone HTML, not a packaged SPFx solution.
 BEHAVIOR
 Search matches app names and descriptions. Ctrl+K / Cmd+K focuses search.
 Escape clears focused search. Stars toggle Favorites.
-Favorites and Recent store only app IDs in this browser's localStorage and do
+Outside Firepit's cross-web read-only session, Favorites and Recent store only
+app IDs in this browser's localStorage and do
 not sync between devices. If storage is blocked, state lasts for this visit.
 Recent records launch-link clicks; it does not assert that the destination
 loaded successfully. The homepage does not grant app permissions.
@@ -131,3 +135,8 @@ Run npm ci, npm test, then install the locked Playwright browser and run
 npm run test:browser. CI also uploads the HTML, its checksum, and screenshots.
 Target application availability, SharePoint embedding, and tenant access
 still need the real-account checks in ACCESS.md.
+
+FIREPIT 9.2: Checking METBASE in ISEAMETENG makes the directory session read-only.
+Favorites, recent apps and theme changes then last for this visit only; the page
+shows that limitation. App destinations and per-page permission filtering remain
+unchanged. Verify live access with ACCESS.md before publishing.
